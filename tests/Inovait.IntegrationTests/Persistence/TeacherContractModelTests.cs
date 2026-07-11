@@ -1,7 +1,9 @@
 using Inovait.Core.Domain.Catalogs;
 using Inovait.Core.Domain.People;
 using Inovait.Core.Domain.Staff;
+using Inovait.Core.Features.TeacherContracts;
 using Inovait.Infrastructure;
+using Inovait.Infrastructure.Features.TeacherContracts;
 using Inovait.Infrastructure.Persistence;
 using Inovait.IntegrationTests.Infrastructure;
 using Microsoft.Data.SqlClient;
@@ -56,6 +58,82 @@ public sealed class TeacherContractModelTests(SqlServerFixture fixture) : IAsync
         Assert.Equal(2, await _context.TeacherContracts.CountAsync(TestContext.Current.CancellationToken));
         await AssertCheckAsync("INSERT [staff].[TeacherContract] ([TeacherPersonId],[SchoolId],[StartDate],[Status]) VALUES (999999,1,'2030-01-01','Confirmed')");
         await AssertCheckAsync($"INSERT [staff].[TeacherContract] ([TeacherPersonId],[SchoolId],[StartDate],[Status]) VALUES ({teacherId},999999,'2030-01-01','Confirmed')");
+    }
+
+    [Fact]
+    [Trait("Evidence", "IT-CON-OVERLAP")]
+    public async Task Workflow_RejectsNonExactAndTouchingOverlapButAllowsAnotherSchool()
+    {
+        var teacherId = await AddTeacherAsync();
+        var secondSchool = new School("SCH-OVR", "Overlap School", SchoolSector.Private);
+        _context.AddRange(secondSchool, new TeacherContract(teacherId, 1, new(2026, 3, 1), new(2026, 6, 30)));
+        await _context.SaveChangesAsync(TestContext.Current.CancellationToken);
+        var handler = _scope.ServiceProvider.GetRequiredService<CreateTeacherContractsHandler>();
+
+        var nonExact = await handler.HandleAsync(Command(teacherId, [1], new(2026, 6, 1), null), TestContext.Current.CancellationToken);
+        var touching = await handler.HandleAsync(Command(teacherId, [1], new(2026, 6, 30), new(2026, 7, 31)), TestContext.Current.CancellationToken);
+        var anotherSchool = await handler.HandleAsync(Command(teacherId, [secondSchool.Id], new(2026, 6, 1), null), TestContext.Current.CancellationToken);
+
+        Assert.Equal(TeacherContractError.OverlapConflict, nonExact.Error);
+        Assert.Equal(TeacherContractError.OverlapConflict, touching.Error);
+        Assert.True(anotherSchool.IsSuccess);
+        Assert.Equal(2, await _context.TeacherContracts.CountAsync(TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    [Trait("Evidence", "IT-CON-OVERLAP")]
+    public async Task SerializableWorkflow_TwoConnectionsCommitExactlyOneOverlappingContract()
+    {
+        var teacherId = await AddTeacherAsync();
+        await using var firstScope = _provider.CreateAsyncScope();
+        await using var secondScope = _provider.CreateAsyncScope();
+        var firstContext = firstScope.ServiceProvider.GetRequiredService<InovaitDbContext>();
+        var secondContext = secondScope.ServiceProvider.GetRequiredService<InovaitDbContext>();
+        var probe = new RaceProbe(2);
+        var first = CreateHandler(firstContext, probe).HandleAsync(
+            Command(teacherId, [1], new(2030, 1, 1), new(2030, 6, 30)), TestContext.Current.CancellationToken).AsTask();
+        var second = CreateHandler(secondContext, probe).HandleAsync(
+            Command(teacherId, [1], new(2030, 3, 1), new(2030, 9, 30)), TestContext.Current.CancellationToken).AsTask();
+
+        TeacherContractResult[] results = [await first, await second];
+        Assert.NotSame(firstContext.Database.GetDbConnection(), secondContext.Database.GetDbConnection());
+        Assert.True(probe.Retries > 0);
+        Assert.Single(results, result => result.IsSuccess);
+        Assert.Single(results, result => result.Error == TeacherContractError.OverlapConflict);
+        Assert.Equal(1, await _context.TeacherContracts.CountAsync(
+            contract => contract.StartDate.Year == 2030, TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task Workflow_ValidatesReferencesAndCancellationRollsBackAndClearsTracking()
+    {
+        var teacherId = await AddTeacherAsync();
+        var handler = _scope.ServiceProvider.GetRequiredService<CreateTeacherContractsHandler>();
+        Assert.Equal(TeacherContractError.TeacherNotFound, (await handler.HandleAsync(
+            Command(999999, [1], new(2027, 1, 1), null), TestContext.Current.CancellationToken)).Error);
+        Assert.Equal(TeacherContractError.SchoolNotFound, (await handler.HandleAsync(
+            Command(teacherId, [999999], new(2027, 1, 1), null), TestContext.Current.CancellationToken)).Error);
+
+        using var source = new CancellationTokenSource();
+        var probe = new RaceProbe(0);
+        var transaction = new EfTeacherContractWorkflow(_context, probe.AfterOverlapReadAsync, probe.RecordAttempt);
+        ITeacherContractRepository repository = transaction;
+        var saved = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        async ValueTask<TeacherContractResult> CancelAfterWrite(CancellationToken token)
+        {
+            await repository.CreateAsync(teacherId, 1, new(2027, 1, 1), null, token);
+            saved.SetResult();
+            await Task.Delay(Timeout.InfiniteTimeSpan, token);
+            return TeacherContractResult.Failure(TeacherContractError.ConcurrencyConflict);
+        }
+        var operation = transaction.ExecuteAsync(CancelAfterWrite, source.Token).AsTask();
+        await saved.Task.WaitAsync(TestContext.Current.CancellationToken);
+        source.Cancel();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => operation);
+        Assert.Empty(_context.ChangeTracker.Entries());
+        Assert.Equal(0, await _context.TeacherContracts.CountAsync(TestContext.Current.CancellationToken));
+        Assert.False(probe.RollbackToken!.Value.CanBeCanceled);
     }
 
     [Fact]
@@ -119,6 +197,34 @@ public sealed class TeacherContractModelTests(SqlServerFixture fixture) : IAsync
         _context.Add(new Teacher(person.Id));
         await _context.SaveChangesAsync(TestContext.Current.CancellationToken);
         return person.Id;
+    }
+    private static CreateTeacherContractsCommand Command(
+        int teacherId, IReadOnlyList<int> schools, DateOnly start, DateOnly? end) =>
+        new(teacherId, schools, start, end);
+    private static CreateTeacherContractsHandler CreateHandler(InovaitDbContext context, RaceProbe probe)
+    {
+        var workflow = new EfTeacherContractWorkflow(context, probe.AfterOverlapReadAsync, probe.RecordAttempt);
+        return new(workflow, workflow);
+    }
+    private sealed class RaceProbe(int participants)
+    {
+        private readonly TaskCompletionSource _release = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private int _arrivals;
+        public int Retries;
+        public CancellationToken? RollbackToken;
+        public async ValueTask AfterOverlapReadAsync(int attempt, CancellationToken token)
+        {
+            if (participants == 0 || attempt != 1)
+                return;
+            if (Interlocked.Increment(ref _arrivals) == participants)
+                _release.SetResult();
+            await _release.Task.WaitAsync(token);
+        }
+        public void RecordAttempt(int attempt, CancellationToken token)
+        {
+            if (attempt == 0) RollbackToken = token;
+            else Interlocked.Increment(ref Retries);
+        }
     }
     private async Task AssertCheckAsync(string sql)
     {
