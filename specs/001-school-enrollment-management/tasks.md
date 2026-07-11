@@ -4,7 +4,7 @@ description: "Tareas P0-first para el modelo de producción y capacidades escola
 
 # Tareas: gestión escolar con modelo de producción
 
-**Estado**: planificación, S01 y S02 implementado salvo el gate inmutable de V2-T019. Este documento publica el task set estable `production-model-v2.0.0`, con IDs `V2-T001`–`V2-T103`. Existen solución, proyectos y convenciones de persistencia; todavía no existen entidades de producción, migraciones ni `database/setup.sql`.
+**Estado**: planificación, S01 y S02 completos. Este documento publica el task set estable `production-model-v2.0.0`, con IDs `V2-T001`–`V2-T103`. Existen solución, proyectos y convenciones de persistencia; todavía no existen entidades de producción, migraciones ni `database/setup.sql`.
 
 Los IDs `T001`–`T076` del baseline `1223630ab99bf1bfaa4f5919fccf5ff539379c8e` pertenecen exclusivamente al task set v1 y **no se pueden usar para ejecución actual**. Sus reemplazos, retiros y descomposiciones están en [task-id-supersession.md](../../docs/task-id-supersession.md). La semántica histórica no se considera estable por coincidencia numérica.
 
@@ -100,7 +100,7 @@ Fallbacks definidos antes de apply, cada sub-slice sujeto al mismo gate:
 - [x] V2-T016 Crear fixture Testcontainers y fallback externo aislado en `tests/Inovait.IntegrationTests/Infrastructure/SqlServerFixture.cs`; **Dep.** V2-T007,V2-T010; **Estado** PASS con SQL Server 2022 compartido por colección y fallback público `ConnectionStrings__InovaitTest` incluido en `Priority=P0`, aislado sin paralelismo y con restauración determinista del entorno.
 - [x] V2-T017 Crear `InovaitDbContext` y registro de interceptors/configuraciones en `src/Inovait.Infrastructure/Persistence/InovaitDbContext.cs` y `DependencyInjection.cs`; **Dep.** V2-T014–V2-T016; **Estado** PASS con `AddInovaitInfrastructure`, `ITextNormalizer`, ambos interceptors, SQL Server y descubrimiento de configuraciones registrados por DI.
 - [x] V2-T018 [REQ-057] Escribir el harness reutilizable de metadatos/concurrencia en `tests/Inovait.IntegrationTests/Persistence/AuditConcurrencyTests.cs` usando únicamente un modelo probe propiedad del test disponible en S02; **Dep.** V2-T017; **Estado** PASS contra SQL Server 2022 real con defaults, check 547, update real, normalización y conflicto rowversion; los dos casos `Priority=P0` no declaran un ID `Evidence`, por lo que no anticipan `IT-AUDIT-UTC-*`/`IT-ROWVERSION-*`; **Criterio** cumplido sin tablas de producción.
-- [ ] V2-T019 Validar S02 con unitarias y fixture SQL Server, y ejecutar el gate humano obligatorio; **Dep.** V2-T018; **Estado** BLOCKED exclusivamente por `HUMAN_HEAD` inexistente bajo la restricción de no commit: restore, build/test Debug+Release, 19 casos `Priority=P0`, format, vulnerabilidades, diff y gate candidato desde `1d627eb` pasan con 253 additions+deletions, pero un worktree no acredita el gate inmutable; **Criterio** ≤400 o bloqueo sin excepción.
+- [x] V2-T019 Validar S02 con unitarias y fixture SQL Server, y ejecutar el gate humano obligatorio; **Dep.** V2-T018; **Estado** PASS con `SLICE_BASE=HUMAN_BASE=1d627eba7acc46aed404e5d4bd818766a855adbb`, `HUMAN_HEAD=0ecac062e5ef08114b0777fde53082f98840444a`, 253 additions+deletions, restore/build/test Debug+Release, 19 casos `Priority=P0` —incluido SQL Server real—, format, vulnerabilidades y diff verdes; **Criterio** cumplido ≤400, sin excepción.
 
 ## Fase 3 / S03: catálogos P0 y singleton
 
