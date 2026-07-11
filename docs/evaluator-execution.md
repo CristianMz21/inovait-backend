@@ -77,6 +77,7 @@ La salida esperada incluye `401` y `human gate failed: 401 > 400`; el último `t
 | S06 workflow (V2-T039,V2-T042–V2-T043) | `f0fdfeea65cde336e1093ba2890b5d713d99fcfe` | `f0fdfeea65cde336e1093ba2890b5d713d99fcfe` | `247794aa41597f5c6d65934e3215a0f99a5d9352` | PASS: sin salida generada, 375 líneas humanas, dentro del límite sin excepción; S06 cerrado. |
 | S07 (V2-T044–V2-T046) | `0f777fbd17417b42351013c2477623808e55ce1f` | `130e642c053e02211268a407ac4dfd2746fc0363` | `a629a712bf7f3b7a7d994c3cec42a4391d28a0e2` | PASS: manifest exacto de cuatro rutas generadas y 384 líneas humanas excluyéndolas, sin excepción; S07 cerrado. |
 | S08 (V2-T047–V2-T051) | `1f2c246bce3b8e08c3dddb7ee36a284a9a5682eb` | `1f2c246bce3b8e08c3dddb7ee36a284a9a5682eb` | `dbf431ecadf4733160b8dba00638bde794c18e0d` | PASS con dispensa `EX-INTEGRITY-2026-07-11`: sin salida generada/manifest; gate humano inmutable mide `1976` líneas humanas (bundle `50ba6ed` aislado: 1556), supera 400; registrado por reconciliación S08–S11 autorizada por el usuario (completitud sobre tamaño de slice); S08 cerrado. |
+| S09 (V2-T052–V2-T057) | `86678088959216952592203345ba016d6356ceba` | `86678088959216952592203345ba016d6356ceba` | `5bb861ec9b228f102c16459038748166f5481f94` | PASS: sin salida generada, 365 líneas humanas, dentro del límite sin excepción; S09 cerrado. |
 
 ### Secuencia exacta ejecutada
 
@@ -270,6 +271,19 @@ dotnet list package --vulnerable --include-transitive
 - Desviación V2-T048: el fixture conserva `ConnectionStrings__InovaitTest` como fallback externo documentado y exclusivo de pruebas, por directiva del usuario del 2026-07-11; esta directiva sustituye la redacción de retiro original de la tarea sin alterar la ruta Testcontainers primaria.
 - OpenSpec strict/show/status, `gentle-ai sdd-status` y drift de 103 task lines: PASS, 51/103 completas y V2-T052 primera pendiente.
 - V2-T047–V2-T051: PASS. S08 cerrado; V2-T052 inicia S09.
+
+## Evidencia técnica S09 inscripción atómica — 2026-07-11
+
+- `SLICE_BASE=HUMAN_BASE=86678088959216952592203345ba016d6356ceba`; `HUMAN_HEAD=5bb861ec9b228f102c16459038748166f5481f94`; sin salida generada.
+- Composición: un solo commit de tests `5bb861e` (test: cover enrollment identity, context, and atomicity scenarios), 365 líneas humanas — `CreateEnrollmentTests.cs` (234) + `EnrollmentAtomicityTests.cs` (131).
+- Fixture: Testcontainers con imagen fijada `mcr.microsoft.com/mssql/server:2022-CU14-ubuntu-22.04` vía `SqlServerFixture`; `ConnectionStrings__InovaitTest` explícitamente ausente del entorno.
+- Targeted por Evidence ID: `IT-ENR-CREATE` 1/1, `IT-ENR-IDENTITY` 3/3, `IT-ENR-CONTEXT` 6/6, `IT-ENR-ATOMIC` 2/2; combinado en un solo filtro `Evidence=IT-ENR-CREATE|Evidence=IT-ENR-IDENTITY|Evidence=IT-ENR-CONTEXT|Evidence=IT-ENR-ATOMIC`: 12/12 PASS.
+- Filtro `Priority=P0`: 65 unitarias + 60 integración = 125/125 PASS.
+- Suites Debug y Release completas: 71 unitarias + 64 integración = 135/135 en cada configuración; cero fallos/omitidas.
+- `dotnet restore`: PASS. Builds Debug y Release: PASS, cero warnings y cero errores. `dotnet format --verify-no-changes --no-restore`: PASS. `dotnet list package --vulnerable --include-transitive`: PASS, cero paquetes vulnerables en cinco proyectos. `git status --porcelain -- specs`: PASS, sin diferencias. Árbol OpenAPI y checksum `802c13b91bf5c6425d24c540b6841a2abe134e084ea310fc2b7041e32c24a81a`: PASS.
+- OpenSpec strict/show/status, `gentle-ai sdd-status` y drift de 103 task lines: PASS, 57/103 completas y V2-T058 primera pendiente.
+- Gate humano inmutable `git diff --numstat 86678088959216952592203345ba016d6356ceba...5bb861ec9b228f102c16459038748166f5481f94 -- | ./scripts/check-human-lines.py`: PASS, salida exacta `365`, dentro del límite de 400 y sin excepción.
+- V2-T052–V2-T057: PASS. S09 cerrado; V2-T058 inicia S10.
 
 ## Notas operativas
 

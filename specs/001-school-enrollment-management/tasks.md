@@ -4,7 +4,7 @@ description: "Tareas P0-first para el modelo de producción y capacidades escola
 
 # Tareas: gestión escolar con modelo de producción
 
-**Estado**: S01–S08 y V2-T001–V2-T051 están cerrados; S08 cerró vía reconciliación de ledger del bundle `50ba6ed` + commit de salud `dbf431e`; V2-T052 es la primera pendiente. Este documento publica el task set estable `production-model-v2.0.0`, con 51 tareas completas y 52 pendientes. Existen el modelo, workflows `Serializable`, las migraciones P0 y el host/catálogos API; todavía falta `database/setup.sql`.
+**Estado**: S01–S09 y V2-T001–V2-T057 están cerrados; S08 cerró vía reconciliación de ledger del bundle `50ba6ed` + commit de salud `dbf431e`; S09 cerró con la evidencia targeted `IT-ENR-CREATE`/`IT-ENR-IDENTITY`/`IT-ENR-CONTEXT`/`IT-ENR-ATOMIC` agregada en `5bb861e`; V2-T058 es la primera pendiente. Este documento publica el task set estable `production-model-v2.0.0`, con 57 tareas completas y 46 pendientes. Existen el modelo, workflows `Serializable`, las migraciones P0, el host/catálogos API y la inscripción atómica; todavía falta `database/setup.sql`.
 
 Los IDs `T001`–`T076` del baseline `1223630ab99bf1bfaa4f5919fccf5ff539379c8e` pertenecen exclusivamente al task set v1 y **no se pueden usar para ejecución actual**. Sus reemplazos, retiros y descomposiciones están en [task-id-supersession.md](../../docs/task-id-supersession.md). La semántica histórica no se considera estable por coincidencia numérica.
 
@@ -161,12 +161,12 @@ Fallbacks definidos antes de apply, cada sub-slice sujeto al mismo gate:
 
 ## Fase 9 / S09: US1 inscripción atómica
 
-- [ ] V2-T052 [P] [US1] [SCN-001–006] Escribir `IT-ENR-CREATE`, `IT-ENR-IDENTITY` e `IT-ENR-CONTEXT` en `tests/Inovait.IntegrationTests/Api/CreateEnrollmentTests.cs`; **Dep.** V2-T051; **Criterio** cubre 201 y alta completa, reutilización equivalente, conflicto 409 sin modificación, fecha futura, 404 de referencia y 422 solo para grupo ajeno al contexto, sin persistencia parcial.
-- [ ] V2-T053 [P] [US1] [SCN-004,SCN-007] Escribir `IT-ENR-ATOMIC` en `tests/Inovait.IntegrationTests/Api/EnrollmentAtomicityTests.cs` con rollback y carrera anual; **Dep.** V2-T051.
-- [ ] V2-T054 [US1] [REQ-001–011,REQ-054,REQ-055] Implementar servicio Person/Student/Enrollment todo-o-nada en Core e Infrastructure; **Dep.** V2-T052,V2-T053.
-- [ ] V2-T055 [US1] Traducir colisiones de identidad/año y concurrencia a `409 ProblemDetails` en `src/Inovait.Api/Errors/`; **Dep.** V2-T054.
-- [ ] V2-T056 [US1] Crear request/response y `createEnrollment` en `src/Inovait.Api/Features/Enrollments/`; **Dep.** V2-T055.
-- [ ] V2-T057 Validar S09 con SCN-001–007, ausencia de persistencia parcial y gate humano obligatorio; **Dep.** V2-T056; **Criterio** ≤400 o bloqueo sin excepción.
+- [x] V2-T052 [P] [US1] [SCN-001–006] Escribir `IT-ENR-CREATE`, `IT-ENR-IDENTITY` e `IT-ENR-CONTEXT` en `tests/Inovait.IntegrationTests/Api/CreateEnrollmentTests.cs`; **Dep.** V2-T051; **Estado** PASS: `IT-ENR-CREATE` preexistía en el bundle `50ba6ed` (1/1); `IT-ENR-IDENTITY` (3/3: reutilización equivalente con normalización, 409 `enrollment_conflict` por birthDate/lastNames discrepantes sin modificar la Person existente) e `IT-ENR-CONTEXT` (6/6: 404 por school/grade/year/classGroup inexistentes con códigos exactos, 422 `academic_context_invalid` por grupo fuera de contexto, 422 `invalid_birth_date` por fecha futura; cero persistencia parcial en todos) se agregaron en `5bb861e`. Targeted `Evidence=IT-ENR-CREATE|IT-ENR-IDENTITY|IT-ENR-CONTEXT`: 10/10 PASS.
+- [x] V2-T053 [P] [US1] [SCN-004,SCN-007] Escribir `IT-ENR-ATOMIC` en `tests/Inovait.IntegrationTests/Api/EnrollmentAtomicityTests.cs` con rollback y carrera anual; **Dep.** V2-T051; **Estado** PASS: `IT-ENR-ATOMIC` (2/2) agregado en `tests/Inovait.IntegrationTests/Api/EnrollmentAtomicityTests.cs` (`5bb861e`): rollback todo-o-nada vía trigger temporal 51021 sobre `academic.Enrollment`, y carrera anual concurrente HTTP real con exactamente un 201 + un 409 y una sola fila (SCN-004/SCN-007).
+- [x] V2-T054 [US1] [REQ-001–011,REQ-054,REQ-055] Implementar servicio Person/Student/Enrollment todo-o-nada en Core e Infrastructure; **Dep.** V2-T052,V2-T053; **Estado** PASS en `50ba6ed`: workflow todo-o-nada `EfEnrollmentWorkflow` SERIALIZABLE con retry en `src/Inovait.Infrastructure/Features/Enrollments/`; ahora verificado por la evidencia targeted S09.
+- [x] V2-T055 [US1] Traducir colisiones de identidad/año y concurrencia a `409 ProblemDetails` en `src/Inovait.Api/Errors/`; **Dep.** V2-T054; **Estado** PASS en `50ba6ed`: mapeos 409 en `EnrollmentProblems.cs`; ahora verificado por la evidencia targeted S09.
+- [x] V2-T056 [US1] Crear request/response y `createEnrollment` en `src/Inovait.Api/Features/Enrollments/`; **Dep.** V2-T055; **Estado** PASS en `50ba6ed`: endpoint `createEnrollment` en `src/Inovait.Api/Endpoints/EnrollmentEndpoints.cs` (desviación de layout documentada frente a `Api/Features/Enrollments/`, ya registrada en S08); ahora verificado por la evidencia targeted S09.
+- [x] V2-T057 Validar S09 con SCN-001–007, ausencia de persistencia parcial y gate humano obligatorio; **Dep.** V2-T056; **Estado** PASS: SCN-001–007 validados y ausencia de persistencia parcial confirmada; gate humano obligatorio ejecutado con resultado HONESTO: `SLICE_BASE=HUMAN_BASE=86678088959216952592203345ba016d6356ceba`, `HUMAN_HEAD=5bb861ec9b228f102c16459038748166f5481f94`, 365 líneas humanas ≤400, sin excepción. S09 cerrado; V2-T058 habilita S10.
 
 ## Fase 10 / S10: US2 consulta de inscritos
 
@@ -236,7 +236,7 @@ Fallbacks definidos antes de apply, cada sub-slice sujeto al mismo gate:
 
 `V2-T001–V2-T004 → S01 V2-T005–V2-T010 → S02 V2-T011–V2-T019 → S03 V2-T020–V2-T026 → S04 V2-T027–V2-T031 → S05/S06 V2-T032–V2-T043 → S07 V2-T044–V2-T046 → S08–S11 V2-T047–V2-T067 → S12 V2-T068–V2-T075 → puerta P0 → S13 V2-T076–V2-T087 → S14–S17 V2-T088–V2-T099 → S18 V2-T100–V2-T103`.
 
-- Task set: `production-model-v2.0.0`; 103/103 tareas trazadas; 51 completas y 52 pendientes. S01–S08 y V2-T001–V2-T051 están cerrados; la primera pendiente es V2-T052. P0: V2-T001–V2-T075; P1 condicional: V2-T076–V2-T099; cierre: V2-T100–V2-T103.
+- Task set: `production-model-v2.0.0`; 103/103 tareas trazadas; 57 completas y 46 pendientes. S01–S09 y V2-T001–V2-T057 están cerrados; la primera pendiente es V2-T058. P0: V2-T001–V2-T075; P1 condicional: V2-T076–V2-T099; cierre: V2-T100–V2-T103.
 - Cobertura auditada: 63/63 requisitos y 35/35 escenarios; cero tareas huérfanas o fuera de alcance y cero requisitos/escenarios sin ruta de ejecución. No se agregan ni renumeran IDs.
 - REQ-053–REQ-063: mapeados en V2-T020–V2-T046, V2-T068–V2-T070, V2-T075–V2-T087 y V2-T102.
 - OpenAPI no se modifica: el refactor mantiene códigos documentales en la proyección y los 15 operationIds.
