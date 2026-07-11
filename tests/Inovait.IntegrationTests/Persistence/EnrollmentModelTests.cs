@@ -1,8 +1,11 @@
 using Inovait.Core.Domain.Academics;
 using Inovait.Core.Domain.Catalogs;
 using Inovait.Core.Domain.People;
+using Inovait.Core.Features.Enrollments;
 using Inovait.Infrastructure;
+using Inovait.Infrastructure.Features.Enrollments;
 using Inovait.Infrastructure.Persistence;
+using Inovait.Infrastructure.Text;
 using Inovait.IntegrationTests.Infrastructure;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
@@ -19,7 +22,81 @@ public sealed class EnrollmentModelTests(SqlServerFixture fixture) : IAsyncLifet
     private ServiceProvider _provider = null!;
     private AsyncServiceScope _scope;
     private InovaitDbContext _context = null!;
-
+    [Fact]
+    public async Task EnrollmentCommand_CreatesReusesAndRejectsADuplicateAnnualEnrollment()
+    {
+        var firstGroup = new ClassGroup(1, 1, 1, "WF-A");
+        var laterYear = new AcademicYear("AY-WF", "Workflow Year", new(2028, 1, 1), new(2028, 12, 31));
+        _context.AddRange(firstGroup, laterYear);
+        await _context.SaveChangesAsync(TestContext.Current.CancellationToken);
+        var laterGroup = new ClassGroup(1, laterYear.Id, 1, "WF-B");
+        _context.Add(laterGroup);
+        await _context.SaveChangesAsync(TestContext.Current.CancellationToken);
+        var handler = _scope.ServiceProvider.GetRequiredService<CreateEnrollmentHandler>();
+        var created = await handler.HandleAsync(Command(firstGroup.Id, 1), TestContext.Current.CancellationToken);
+        var duplicate = await handler.HandleAsync(Command(firstGroup.Id, 1), TestContext.Current.CancellationToken);
+        var reused = await handler.HandleAsync(Command(laterGroup.Id, laterYear.Id), TestContext.Current.CancellationToken);
+        Assert.True(created.IsSuccess);
+        Assert.Equal(EnrollmentError.AnnualEnrollmentConflict, duplicate.Error);
+        Assert.True(reused.IsSuccess && reused.StudentReused);
+        var cancellationToken = TestContext.Current.CancellationToken;
+        Assert.Equal((1, 1, 2), (await _context.People.CountAsync(cancellationToken),
+            await _context.Students.CountAsync(cancellationToken), await _context.Enrollments.CountAsync(cancellationToken)));
+    }
+    [Fact]
+    public async Task EnrollmentTransaction_CancellationRollsBackAndClearsTracking()
+    {
+        using var source = new CancellationTokenSource();
+        var probe = new RetryProbe(1, false);
+        var transaction = new EfEnrollmentWorkflow(
+            _context, probe.BeforeAttemptAsync, probe.RecordAttempt);
+        IEnrollmentRepository repository = transaction;
+        var personSaved = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        async ValueTask<EnrollmentResult> CancelAfterPerson(CancellationToken cancellationToken)
+        {
+            await repository.CreatePersonAsync(new(IdentityResolutionStatus.NewPerson, null, 1, "ROLLBACK-1",
+                "Rollback", "Student", new(2012, 1, 1), true), cancellationToken);
+            personSaved.SetResult();
+            await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+            return EnrollmentResult.Failure(EnrollmentError.ConcurrencyConflict);
+        }
+        var operation = transaction.ExecuteAsync(CancelAfterPerson, source.Token).AsTask();
+        await personSaved.Task.WaitAsync(TestContext.Current.CancellationToken);
+        source.Cancel();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => operation);
+        Assert.Equal((0, 0), (await _context.People.CountAsync(TestContext.Current.CancellationToken),
+            _context.ChangeTracker.Entries().Count()));
+        Assert.False(probe.RollbackToken!.Value.CanBeCanceled);
+    }
+    [Fact]
+    public async Task EnrollmentCommand_ConcurrentRequestsCommitExactlyOneAnnualEnrollment()
+    {
+        var group = new ClassGroup(1, 1, 1, "WF-RACE");
+        _context.Add(group);
+        await _context.SaveChangesAsync(TestContext.Current.CancellationToken);
+        await using var firstScope = _provider.CreateAsyncScope();
+        await using var secondScope = _provider.CreateAsyncScope();
+        var firstContext = firstScope.ServiceProvider.GetRequiredService<InovaitDbContext>();
+        var secondContext = secondScope.ServiceProvider.GetRequiredService<InovaitDbContext>();
+        var probe = new RetryProbe(2, false);
+        var command = Command(group.Id, 1, "RACE-1");
+        var first = CreateHandler(firstContext, probe).HandleAsync(command, TestContext.Current.CancellationToken).AsTask();
+        var second = CreateHandler(secondContext, probe).HandleAsync(command, TestContext.Current.CancellationToken).AsTask();
+        EnrollmentResult[] results = [await first, await second];
+        Assert.NotSame(firstContext.Database.GetDbConnection(), secondContext.Database.GetDbConnection());
+        Assert.True(probe.Retries > 0);
+        Assert.Single(results, result => result.IsSuccess);
+        Assert.Single(results, result => result.Error == EnrollmentError.AnnualEnrollmentConflict);
+        var cancellationToken = TestContext.Current.CancellationToken;
+        Assert.Equal((1, 1, 1), (await _context.People.CountAsync(cancellationToken),
+            await _context.Students.CountAsync(cancellationToken), await _context.Enrollments.CountAsync(cancellationToken)));
+        var exhaustionProbe = new RetryProbe(0, true);
+        var exhausted = await CreateHandler(_context, exhaustionProbe)
+            .HandleAsync(Command(1, 1), TestContext.Current.CancellationToken);
+        Assert.Equal(EnrollmentError.ConcurrencyConflict, exhausted.Error);
+        Assert.Equal(3, exhaustionProbe.Retries);
+        Assert.Empty(_context.ChangeTracker.Entries());
+    }
     [Fact]
     [Trait("Evidence", "IT-ENR-ANNUAL")]
     public async Task Enrollment_AllowsHistoryAcrossYearsButRejectsDuplicateAndDivergentYears()
@@ -174,6 +251,34 @@ public sealed class EnrollmentModelTests(SqlServerFixture fixture) : IAsyncLifet
         _context.Add(new Student(person.Id));
         await _context.SaveChangesAsync(TestContext.Current.CancellationToken);
         return person.Id;
+    }
+
+    private static CreateEnrollmentCommand Command(int classGroupId, int academicYearId, string document = "WF-1") =>
+        new(new("CC", document, "Ada", "Lovelace", new(2012, 1, 1)), 1, academicYearId, 1, classGroupId);
+
+    private static CreateEnrollmentHandler CreateHandler(InovaitDbContext context, RetryProbe probe)
+    {
+        var workflow = new EfEnrollmentWorkflow(
+            context, probe.BeforeAttemptAsync, probe.RecordAttempt);
+        return new(new(new TextNormalizer(), workflow, TimeProvider.System), workflow, workflow);
+    }
+
+    private sealed class RetryProbe(int participants, bool fail)
+    {
+        private readonly TaskCompletionSource _release = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private int _arrivals;
+        public int Retries;
+        public CancellationToken? RollbackToken;
+        public async ValueTask<bool> BeforeAttemptAsync(int attempt, CancellationToken cancellationToken)
+        {
+            if (fail || attempt != 1)
+                return fail;
+            if (Interlocked.Increment(ref _arrivals) == participants)
+                _release.SetResult();
+            await _release.Task.WaitAsync(cancellationToken);
+            return false;
+        }
+        public void RecordAttempt(int attempt, CancellationToken token) { if (attempt == 0) RollbackToken = token; else Interlocked.Increment(ref Retries); }
     }
 
     private IReadOnlyIndex AssertIndex<TEntity>(string name, string[] keys, string[] includes) where TEntity : class

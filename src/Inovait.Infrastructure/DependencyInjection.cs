@@ -1,4 +1,6 @@
 using Inovait.Core.Domain.Common;
+using Inovait.Core.Features.Enrollments;
+using Inovait.Infrastructure.Features.Enrollments;
 using Inovait.Infrastructure.Persistence;
 using Inovait.Infrastructure.Persistence.Interceptors;
 using Inovait.Infrastructure.Text;
@@ -22,6 +24,12 @@ public static class DependencyInjection
         services.AddSingleton<TextNormalizationInterceptor>();
         services.AddSingleton<AuditSaveChangesInterceptor>();
         services.AddScoped<AcademicConfigurationStartupCheck>();
+        services.AddScoped<EfEnrollmentWorkflow>();
+        services.AddScoped<IIdentityReader>(provider => provider.GetRequiredService<EfEnrollmentWorkflow>());
+        services.AddScoped<IEnrollmentRepository>(provider => provider.GetRequiredService<EfEnrollmentWorkflow>());
+        services.AddScoped<IEnrollmentTransaction>(provider => provider.GetRequiredService<EfEnrollmentWorkflow>());
+        services.AddScoped<IdentityResolver>();
+        services.AddScoped<CreateEnrollmentHandler>();
         services.AddDbContext<InovaitDbContext>((provider, options) =>
             options.UseSqlServer(connectionString)
                 .AddInterceptors(
