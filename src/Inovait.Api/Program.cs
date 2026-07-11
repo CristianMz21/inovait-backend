@@ -73,6 +73,8 @@ app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 
 app.MapGet("/", () => new { service = "Inovait API", status = "ready" });
 
+app.MapHealthEndpoints();
+
 if (!string.IsNullOrWhiteSpace(connectionString))
 {
     app.MapCatalogEndpoints();
