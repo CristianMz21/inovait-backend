@@ -1,0 +1,4 @@
+src/Inovait.Infrastructure/Persistence/Migrations/20260711161500_InitialP0ProductionModel.Designer.cs
+src/Inovait.Infrastructure/Persistence/Migrations/20260711161500_InitialP0ProductionModel.cs
+src/Inovait.Infrastructure/Persistence/Migrations/20260711161518_AddP0DatabaseProtections.Designer.cs
+src/Inovait.Infrastructure/Persistence/Migrations/InovaitDbContextModelSnapshot.cs

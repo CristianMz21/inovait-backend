@@ -36,6 +36,8 @@ Los tres valores deben ser SHAs completos, no nombres móviles de ramas. El gate
 
 Para S01, [`docs/generated-manifests/s01.txt`](generated-manifests/s01.txt) contiene exactamente las 16 rutas producidas por `dotnet new` y `dotnet sln add`: solución, proyectos y archivos template, incluidos `Class1.cs` y `UnitTest1.cs`. Esas rutas ocupan un commit generado aislado en su estado original. Si una plantilla se modifica o elimina después, ese delta queda en el commit humano y se cuenta; una ruta manual como `.editorconfig`, `scripts/check-human-lines.py`, `SmokeTests.cs` o `HumanLineGateTests.cs` nunca pertenece al manifest.
 
+Para S07, [`docs/generated-manifests/s07.txt`](generated-manifests/s07.txt) clasifica exactamente las cuatro rutas producidas por EF: migration inicial, ambos designers y snapshot. Tres quedaron en `130e642`; el designer de la migración manual quedó junto al cierre `a629a71`. El gate inmutable S07 usa el rango completo `0f777fb...a629a71`, excluye esas cuatro rutas declaradas y cuenta únicamente la migración manual y las dos rutas de pruebas.
+
 Ejemplo de verificación canónica:
 
 ```bash
@@ -73,6 +75,7 @@ La salida esperada incluye `401` y `human gate failed: 401 > 400`; el último `t
 | S05 workflow (V2-T036–V2-T037) | `100b0e6511c34681823ce7ad7b798da78a38b772` | `100b0e6511c34681823ce7ad7b798da78a38b772` | `f48748febea49a212ddfed983f1d361d416801e2` | PASS: sin salida generada, 400 líneas humanas exactas, dentro del límite sin excepción; S05 cerrado. |
 | S06 modelo (V2-T038,V2-T040–V2-T041) | `ea8335496badae0c4de4de81cb61a661a23f8da6` | `ea8335496badae0c4de4de81cb61a661a23f8da6` | `28e25a25546763b268a9565db466b79be6c52de7` | PASS: sin salida generada, 363 líneas humanas; cierre final registrado en la unidad siguiente. |
 | S06 workflow (V2-T039,V2-T042–V2-T043) | `f0fdfeea65cde336e1093ba2890b5d713d99fcfe` | `f0fdfeea65cde336e1093ba2890b5d713d99fcfe` | `247794aa41597f5c6d65934e3215a0f99a5d9352` | PASS: sin salida generada, 375 líneas humanas, dentro del límite sin excepción; S06 cerrado. |
+| S07 (V2-T044–V2-T046) | `0f777fbd17417b42351013c2477623808e55ce1f` | `130e642c053e02211268a407ac4dfd2746fc0363` | `a629a712bf7f3b7a7d994c3cec42a4391d28a0e2` | PASS: manifest exacto de cuatro rutas generadas y 384 líneas humanas excluyéndolas, sin excepción; S07 cerrado. |
 
 ### Secuencia exacta ejecutada
 
@@ -86,6 +89,8 @@ La salida esperada incluye `401` y `human gate failed: 401 > 400`; el último `t
 8. `feat: add atomic enrollment workflow` (`f48748febea49a212ddfed983f1d361d416801e2`): work unit S05 de command/puertos/transacción y pruebas de confiabilidad en 6 rutas bajo `src/` y `tests/`; sin salida generada.
 9. `feat: add teacher contract model` (`28e25a25546763b268a9565db466b79be6c52de7`): checkpoint de modelo S06 en 5 rutas bajo `src/` y `tests/`; sin salida generada y sin workflow `Serializable`.
 10. `feat: add atomic teacher contract workflow` (`247794aa41597f5c6d65934e3215a0f99a5d9352`): work unit S06 de command/puertos/transacción `Serializable` y pruebas de solapamiento/carrera en 5 rutas bajo `src/` y `tests/`; sin salida generada.
+11. `chore: add initial P0 production migration` (`130e642c053e02211268a407ac4dfd2746fc0363`): scaffold inicial, designer y snapshot EF de 11 tablas; tres de las cuatro rutas del manifest S07.
+12. `feat: add P0 database protections and migration evidence` (`a629a712bf7f3b7a7d994c3cec42a4391d28a0e2`): migration manual, designer generado y seis evidencias S07; el gate excluye las cuatro rutas generadas del manifest y cuenta 384 líneas humanas.
 
 ### Evidencia V2-T010
 
@@ -238,6 +243,19 @@ dotnet list package --vulnerable --include-transitive
 - OpenSpec strict/show/status, `gentle-ai sdd-status` y drift de 103 task lines: PASS, 43/103 completas y V2-T044 primera pendiente.
 - Gate inmutable `git diff --numstat f0fdfeea65cde336e1093ba2890b5d713d99fcfe...247794aa41597f5c6d65934e3215a0f99a5d9352 -- | ./scripts/check-human-lines.py`: PASS, salida exacta `375`, sin excepción.
 - V2-T039,V2-T042,V2-T043: PASS. S06 cerrado; V2-T044 inicia la migración P0 generada y aislada de S07.
+
+## Evidencia técnica S07 — 2026-07-11
+
+- `SLICE_BASE=0f777fbd17417b42351013c2477623808e55ce1f`; `HUMAN_BASE=130e642c053e02211268a407ac4dfd2746fc0363`; `HUMAN_HEAD=a629a712bf7f3b7a7d994c3cec42a4391d28a0e2`.
+- `docs/generated-manifests/s07.txt`: cuatro rutas exactas — migration inicial, ambos designers y snapshot. El gate sobre `SLICE_BASE...HUMAN_HEAD` excluyó esas cuatro rutas y contó exclusivamente `AddP0DatabaseProtections.cs` (91), `AuditConcurrencyTests.cs` (119) y `P0DatabaseProtectionTests.cs` (174): salida exacta `384`.
+- `ConnectionStrings__InovaitTest` estuvo ausente; Testcontainers usó SQL Server 2022 CU14 y bases limpias.
+- Targeted S07: 6/6 PASS — `IT-SCHEMAS-P0`, `IT-IMMUTABILITY`, `IT-SINGLETON`, `IT-REFERENCE-PERMISSIONS`, `IT-AUDIT-UTC-P0`, `IT-ROWVERSION-P0`.
+- Migration lifecycle: empty apply, repeat apply, Down seguro frente a rol ajeno (51006), rol propio con miembro, revocación/remoción de miembro, down-to-zero, rechazo de rol ajeno en Up (51005), script idempotente ejecutado dos veces y reapply: PASS.
+- Modelo físico: 11 tablas/cuatro schemas exactos, cuatro triggers, seed UTC fijo `2026-01-01`, singleton/startup, marca de propiedad del rol, GRANT/DENY de runtime, siete entidades auditables/rowversion, `Enrollment` creation-only y tres negativos sin auditoría: PASS.
+- Filtro `Priority=P0`: 65 unitarias + 29 integración = 94/94 PASS; suites Debug y Release: 71 unitarias + 31 integración = 102/102 en cada configuración; cero fallos/omitidas.
+- Restore locked, builds Debug/Release con cero warnings/errores, format, vulnerabilidades, diff, árbol OpenAPI y checksum `802c13b91bf5c6425d24c540b6841a2abe134e084ea310fc2b7041e32c24a81a`: PASS.
+- Gate humano inmutable: PASS, salida exacta `384`, dentro del límite 400 y sin excepción.
+- V2-T044–V2-T046: PASS. S07 cerrado; V2-T047 inicia S08 bajo ownership del worktree API.
 
 ## Notas operativas
 

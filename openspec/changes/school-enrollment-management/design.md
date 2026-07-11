@@ -34,7 +34,7 @@ Parity tests compare `sys.schemas`, `sys.tables`, `sys.columns`, `sys.default_co
 
 ## Current Execution Snapshot
 
-Verified HEAD `247794a`: S01–S06 and V2-T001–V2-T043 are complete. S06 proves TeacherContract date/cancellation behavior, exact-open uniqueness, checks/FK/audit/rowversion, canonical indexes, atomic multi-school validation, indexed inclusive overlap reads and two-connection enforcement inside `Serializable` transactions. V2-T044 starts the isolated generated P0 migration work unit.
+Verified HEAD `a629a71`: S01–S07 and V2-T001–V2-T046 are complete. S07 proves the 11-table generated migration, canonical seed timestamps, four narrow triggers, migration-owned runtime role permissions, safe foreign-role rejection, member-aware Down, empty/up/down/reapply, idempotent script twice, and exact P0 audit/rowversion allocation. V2-T047 starts S08 without changing the API contract.
 
 ## Open Questions
 

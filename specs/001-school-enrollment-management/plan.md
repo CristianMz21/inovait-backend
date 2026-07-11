@@ -2,7 +2,7 @@
 
 **Rama de planificación**: `feat/production-data-model` | **Ejecución local actual**: `main` | **Fecha**: 2026-07-10 | **Especificación**: [spec.md](./spec.md)
 
-**Estado**: S01–S06 y V2-T001–V2-T043 están cerrados con el workflow contractual verificado en `247794a`; V2-T044 es la primera pendiente. Existe `TeacherContract` con cancelación, estado efectivo, checks, auditoría/rowversion, índices y creación atómica `Serializable`; todavía faltan las migraciones y `database/setup.sql`. Esta actualización documental no autoriza commit, merge ni push.
+**Estado**: S01–S07 y V2-T001–V2-T046 están cerrados con la cadena P0 verificada en `a629a71`; V2-T047 es la primera pendiente. Existen los 11 modelos P0, workflows `Serializable`, migraciones generada/manual, protecciones, seed, auditoría/rowversion y permisos verificados; todavía falta `database/setup.sql`. Esta actualización documental no autoriza commit, merge ni push.
 
 **Task set ejecutable**: `production-model-v2.0.0` (`V2-T001`–`V2-T103`). Los IDs históricos `T001`–`T076` del baseline v1 están supersedidos y no son válidos para ejecución actual; ver [task-id-supersession.md](../../docs/task-id-supersession.md).
 
@@ -129,16 +129,16 @@ docs/{architecture,entity-relationship-model,testing-strategy,requirements-trace
 | S04 | `Person` y roles duales | S03 | PASS: `e43c032`, gate inmutable 394, identidad compuesta y SQL Server real |
 | S05 | `ClassGroup`/`Enrollment` y unicidad anual | S04 | PASS: modelo en `b46fc52`, workflow en `f48748f`, gates 285/400 y SQL Server real |
 | S06 | `TeacherContract` y cancelación/solapamiento | S04 | PASS: modelo en `28e25a2`, workflow en `247794a`, gates 363/375 y SQL Server real con carrera `Serializable` |
-| S07 | migración P0 generada aislada + migration de protecciones SQL separado | S03–S06 | aplicar cadena a SQL Server limpio y ejecutar evidencia completa de 11 tablas, triggers, singleton y permisos después de V2-T045 |
+| S07 | migración P0 generada aislada + migration de protecciones SQL separado | S03–S06 | PASS en `130e642`/`a629a71`: 11 tablas, cuatro triggers, singleton, permisos, rollback/reapply y gate humano 384 |
 | S08–S11 | catálogos/API, US1, US2 y US3 | S07, en orden | tests HTTP por capacidad |
 | S12 | `database/setup.sql`, paridad y walkthrough P0 | S08–S11 | manifest exacto de 37 IDs, ejecución completa y puerta P0 |
 | S13 | modelo/migración P1 y `listSubjects` end-to-end, generado aislado | puerta P0 | 14 tablas + prueba HTTP con orden `name, code, id` |
 | S14–S17 | una capacidad P1 por slice | S13 | BQ aislada |
 | S18 | hardening y entrega | aplicables | suite y walkthrough |
 
-**Estado de ejecución hasta `247794a`**: S01–S06 y V2-T001–V2-T043 están cerrados. S06 acredita entidad `TeacherContract`, transición/estado efectivo según fecha, checks/FK/UQ exacto abierto, auditoría/rowversion e índices key/include, además de command/resultados/errores, validación atómica multiescuela, lectura indexada de intersección inclusiva, rollback seguro y carrera de dos conexiones dentro de transacciones `Serializable`. Los gates inmutables son 363 líneas para el modelo y 375 para el workflow, ambos contra SQL Server real y sin excepción; V2-T044 inicia S07.
+**Estado de ejecución hasta `a629a71`**: S01–S07 y V2-T001–V2-T046 están cerrados. S07 materializa 11 tablas mediante `InitialP0ProductionModel`, corrige timestamps seed canónicos y agrega cuatro triggers/permisos mediante `AddP0DatabaseProtections`; el rol runtime conserva marca de propiedad, rechazo seguro de principal ajeno y Down con revocación/remoción de miembros. El manifest identifica cuatro rutas generadas y el delta humano inmutable es 384 líneas; targeted 6/6, P0 94/94 y Debug/Release 102/102 pasan contra SQL Server real. V2-T047 inicia S08.
 
-**Frontera S03/S07**: S03 instala y prueba triggers/permisos solo sobre cinco tablas catalog bajo IDs S03; S07 materializa 11 tablas y revalida las protecciones completas bajo `IT-IMMUTABILITY`, `IT-SINGLETON` e `IT-REFERENCE-PERMISSIONS`. Los fallbacks S07/S12/S13 conservan manifest, gate ≤400 y rollback; no se improvisan excepciones.
+**Frontera S03/S07 cerrada**: S03 instaló protecciones catalog-only; S07 materializó 11 tablas y revalidó `IT-SCHEMAS-P0`, `IT-IMMUTABILITY`, `IT-SINGLETON`, `IT-REFERENCE-PERMISSIONS`, `IT-AUDIT-UTC-P0` e `IT-ROWVERSION-P0`, incluidos empty/up/down/reapply, script idempotente doble, seed exacto y rollback del rol con miembros. S08 puede comenzar en V2-T047; los fallbacks S12/S13 conservan manifest, gate ≤400 y rollback sin excepciones improvisadas.
 
 ## Puertas
 

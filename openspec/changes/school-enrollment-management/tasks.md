@@ -6,7 +6,7 @@ description: "Tareas P0-first para el modelo de producción y capacidades escola
 
 # Tareas: gestión escolar con modelo de producción
 
-**Estado**: S01–S06 y V2-T001–V2-T043 están cerrados con el workflow contractual verificado en `247794a`; V2-T044 es la primera pendiente. Este documento publica el task set estable `production-model-v2.0.0`, con 43 tareas completas y 60 pendientes. Existen el modelo y workflow `Serializable` de `TeacherContract`; todavía faltan las migraciones y `database/setup.sql`.
+**Estado**: S01–S07 y V2-T001–V2-T046 están cerrados con la cadena P0 verificada en `a629a71`; V2-T047 es la primera pendiente. Este documento publica el task set estable `production-model-v2.0.0`, con 46 tareas completas y 57 pendientes. Existen el modelo, workflows `Serializable` y las migraciones P0; todavía falta `database/setup.sql`.
 
 Los IDs `T001`–`T076` del baseline `1223630ab99bf1bfaa4f5919fccf5ff539379c8e` pertenecen exclusivamente al task set v1 y **no se pueden usar para ejecución actual**. Sus reemplazos, retiros y descomposiciones están en [task-id-supersession.md](../../docs/task-id-supersession.md). La semántica histórica no se considera estable por coincidencia numérica.
 
@@ -149,9 +149,9 @@ Fallbacks definidos antes de apply, cada sub-slice sujeto al mismo gate:
 
 ## Fase 7 / S07: migración P0 generada y aislada
 
-- [ ] V2-T044 [REQ-053–059,REQ-061,REQ-062] Generar `InitialP0ProductionModel` en `src/Inovait.Infrastructure/Persistence/Migrations/` sin editar a mano el scaffold; **Dep.** V2-T026,V2-T031,V2-T037,V2-T043; **Criterio** diff generado aislado, manifest exacto y gate S07A si se activa el fallback.
-- [ ] V2-T045 [REQ-056,REQ-058,REQ-062] Crear el migration manual `AddP0DatabaseProtections` solo con cuatro triggers/permisos, incluido `DENY INSERT, UPDATE, DELETE` de `catalog.DocumentType` al rol runtime, y revisar la cadena contra 11 tablas, constraints, índices, seeds y permisos; **Dep.** V2-T044; **Criterio condicional S07B** gate ≤400 antes de merge.
-- [ ] V2-T046 Aplicar/revertir/aplicar `InitialP0ProductionModel` + `AddP0DatabaseProtections` sobre SQL Server limpio; producir y ejecutar los ID completos `IT-SCHEMAS-P0`, `IT-IMMUTABILITY`, `IT-SINGLETON`, `IT-REFERENCE-PERMISSIONS` en `tests/Inovait.IntegrationTests/Persistence/P0DatabaseProtectionTests.cs`, completar y ejecutar `IT-AUDIT-UTC-P0`/`IT-ROWVERSION-P0` en `AuditConcurrencyTests.cs`, y ejecutar el gate humano obligatorio; **Dep.** V2-T045; **Criterio de disponibilidad** las 11 tablas, cuatro triggers, rol, GRANT/DENY y seed existen antes de ejecutar; **Criterio positivo** auditoría/check/update real/rowversion exactamente en `School`, `AcademicYear`, `Grade`, `ClassGroup`, `Person`, `Teacher`, `TeacherContract`; **CreatedAt-only** `Enrollment`; **Criterio negativo** `DocumentType`, `Student`, `AcademicConfiguration` sin auditoría genérica, check cronológico ni rowversion; **Gate** ≤400 o activar S07A/S07B/S07C, sin excepción.
+- [x] V2-T044 [REQ-053–059,REQ-061,REQ-062] Generar `InitialP0ProductionModel` en `src/Inovait.Infrastructure/Persistence/Migrations/` sin editar a mano el scaffold; **Dep.** V2-T026,V2-T031,V2-T037,V2-T043; **Estado** PASS con scaffold inicial inmutable `130e642`, snapshot de 11 tablas y manifest S07 exacto de cuatro rutas generadas.
+- [x] V2-T045 [REQ-056,REQ-058,REQ-062] Crear el migration manual `AddP0DatabaseProtections` solo con cuatro triggers/permisos, incluido `DENY INSERT, UPDATE, DELETE` de `catalog.DocumentType` al rol runtime, y revisar la cadena contra 11 tablas, constraints, índices, seeds y permisos; **Dep.** V2-T044; **Estado** PASS en `a629a71` con timestamps seed canónicos, cuatro triggers, rol marcado como propiedad de la migración, GRANT/DENY mínimos y Down seguro para miembros/roles ajenos.
+- [x] V2-T046 Aplicar/revertir/aplicar `InitialP0ProductionModel` + `AddP0DatabaseProtections` sobre SQL Server limpio; producir y ejecutar los ID completos `IT-SCHEMAS-P0`, `IT-IMMUTABILITY`, `IT-SINGLETON`, `IT-REFERENCE-PERMISSIONS` en `tests/Inovait.IntegrationTests/Persistence/P0DatabaseProtectionTests.cs`, completar y ejecutar `IT-AUDIT-UTC-P0`/`IT-ROWVERSION-P0` en `AuditConcurrencyTests.cs`, y ejecutar el gate humano obligatorio; **Dep.** V2-T045; **Estado** PASS con `SLICE_BASE=0f777fb`, `HUMAN_BASE=130e642`, `HUMAN_HEAD=a629a71`, cuatro rutas generadas excluidas y gate humano inmutable `384`; targeted S07 6/6, P0 94/94 y Debug/Release 102/102 contra SQL Server real, incluidos empty/up/down/reapply, script idempotente doble, miembros y roles ajenos; sin excepción.
 
 ## Fase 8 / S08: host y catálogos P0
 
@@ -238,7 +238,7 @@ Fallbacks definidos antes de apply, cada sub-slice sujeto al mismo gate:
 
 `V2-T001–V2-T004 → S01 V2-T005–V2-T010 → S02 V2-T011–V2-T019 → S03 V2-T020–V2-T026 → S04 V2-T027–V2-T031 → S05/S06 V2-T032–V2-T043 → S07 V2-T044–V2-T046 → S08–S11 V2-T047–V2-T067 → S12 V2-T068–V2-T075 → puerta P0 → S13 V2-T076–V2-T087 → S14–S17 V2-T088–V2-T099 → S18 V2-T100–V2-T103`.
 
-- Task set: `production-model-v2.0.0`; 103/103 tareas trazadas; 43 completas y 60 pendientes. S01–S06 y V2-T001–V2-T043 están cerrados; la primera pendiente es V2-T044. P0: V2-T001–V2-T075; P1 condicional: V2-T076–V2-T099; cierre: V2-T100–V2-T103.
+- Task set: `production-model-v2.0.0`; 103/103 tareas trazadas; 46 completas y 57 pendientes. S01–S07 y V2-T001–V2-T046 están cerrados; la primera pendiente es V2-T047. P0: V2-T001–V2-T075; P1 condicional: V2-T076–V2-T099; cierre: V2-T100–V2-T103.
 - Cobertura auditada: 63/63 requisitos y 35/35 escenarios; cero tareas huérfanas o fuera de alcance y cero requisitos/escenarios sin ruta de ejecución. No se agregan ni renumeran IDs.
 - REQ-053–REQ-063: mapeados en V2-T020–V2-T046, V2-T068–V2-T070, V2-T075–V2-T087 y V2-T102.
 - OpenAPI no se modifica: el refactor mantiene códigos documentales en la proyección y los 15 operationIds.

@@ -36,15 +36,15 @@ Testcontainers es la única puerta relacional automatizada. Una instancia extern
 | `IT-CATALOG-SCHEMA-S03` | cinco tablas catalog: keys/checks y seed exacto, idempotente, vacío/parcial, concurrente y rollback-safe; no afirma el modelo P0 completo |
 | `IT-CATALOG-MUTABILITY-S03` | evidencia catalog-only: save behavior y triggers impiden Code/Sector incluso solo por case; Name permanece mutable |
 | `IT-CATALOG-SINGLETON-S03` | evidencia catalog-only: PK+CHECK, seed, startup positivo/fail-fast, anti-delete y permisos runtime sobre cinco tablas |
-| `IT-SCHEMAS-P0` | producida y ejecutada en S07 después de V2-T045: 11 tablas en schemas exactos; nunca `academic.AcademicYear` |
+| `IT-SCHEMAS-P0` | PASS en S07: 11 tablas en schemas exactos; nunca `academic.AcademicYear`; seed UTC exacto; empty/up/down/reapply y script idempotente doble |
 | `IT-PERSON-COLLATION` | mismo tipo+número con variación de case colisiona; acento distinto no colisiona; UQ e índice de nombres conservan nombre, orden de keys e INCLUDE exactos |
 | `IT-TEXT-CHECKS` | SQL directo con `''` o solo U+0020 falla por `LEN(TRIM)>0`; un valor solo tab/newline puede superar ese CHECK aislado, prueba negativa que fija la diferencia respecto del normalizador de aplicación |
 | `IT-PERSON-DUAL-ROLE` | un `PersonId` admite `Student` y `Teacher`; roles no duplican identidad y fijan schema/tabla/PK/FK/dependent/principal exactos, con auditoría solo donde corresponde |
-| `IT-AUDIT-UTC-P0` | después de materializar P0: positivo exacto en `School`, `AcademicYear`, `Grade`, `ClassGroup`, `Person`, `Teacher`, `TeacherContract`, con ambos defaults/check y update real que preserva creación; `Enrollment` solo `CreatedAtUtc`; negativo en `DocumentType`, `Student`, `AcademicConfiguration` |
-| `IT-ROWVERSION-P0` | después de materializar P0: token y conflicto entre dos contextos exactamente para las siete entidades auditables P0; ausencia en `Enrollment`, `DocumentType`, `Student`, `AcademicConfiguration` |
-| `IT-SINGLETON` | producida y ejecutada en S07 después de V2-T045: PK+CHECK bloquean segundo Id; seed Id=1 existe; runtime no inserta/elimina; trigger bloquea delete; ausencia simulada provoca fail-fast |
-| `IT-REFERENCE-PERMISSIONS` | producida y ejecutada en S07 después de V2-T045: con `EXECUTE AS USER` para un usuario de prueba miembro solo de `[inovait_runtime]`, SELECT de `catalog.DocumentType` funciona e INSERT/UPDATE/DELETE fallan por DENY explícito; la paridad posterior de setup pertenece a `IT-SQL-SCRIPT` |
-| `IT-IMMUTABILITY` | producida y ejecutada en S07 después de V2-T045: EF rechaza cambio de Code/Sector; SQL directo activa cada trigger P0; otros campos mutables sí cambian |
+| `IT-AUDIT-UTC-P0` | PASS en S07: positivo exacto en `School`, `AcademicYear`, `Grade`, `ClassGroup`, `Person`, `Teacher`, `TeacherContract`, con ambos defaults/check y update real que preserva creación; `Enrollment` solo `CreatedAtUtc`; negativo en `DocumentType`, `Student`, `AcademicConfiguration` |
+| `IT-ROWVERSION-P0` | PASS en S07: token y conflicto entre dos contextos exactamente para las siete entidades auditables P0; ausencia en `Enrollment`, `DocumentType`, `Student`, `AcademicConfiguration` |
+| `IT-SINGLETON` | PASS en S07: PK+CHECK bloquean segundo Id; seed Id=1 existe; runtime no inserta/elimina; trigger bloquea delete; ausencia simulada provoca fail-fast |
+| `IT-REFERENCE-PERMISSIONS` | PASS en S07: `EXECUTE AS USER` prueba SELECT y los tres DENY de `DocumentType`; el rol tiene marca de propiedad, rechaza principales ajenos y Down revoca permisos/remueve miembros antes de eliminar solo el rol propio; la paridad posterior de setup pertenece a `IT-SQL-SCRIPT` |
+| `IT-IMMUTABILITY` | PASS en S07: EF rechaza cambio de Code/Sector; SQL directo activa cada trigger P0; otros campos mutables sí cambian |
 | `IT-ENR-ANNUAL` | permite historia en años distintos; UNIQUE estudiante+año rechaza duplicado y FK compuesto con `UQ_ClassGroup_Id_AcademicYear_ForEnrollment` rechaza año divergente |
 | `IT-ENR-ATOMIC` | alta Person/Student/Enrollment todo-o-nada; carrera anual tiene un ganador |
 | `IT-CON-CANCELLATION` | checks all-or-none, razón no vacía y fecha efectiva dentro del período |
@@ -92,7 +92,7 @@ Las pruebas consultan `sys.indexes` y `sys.index_columns`, distinguen key/includ
 
 ## Staging y manifests de evidencia
 
-S02 produce el harness probe. S03 posee tres IDs catalog-only y dos casos P0 auxiliares para concurrencia y rollback/cleanup de seed. S04 produce `UT-IDENTITY` y los tres IDs `IT-PERSON-*`/`IT-TEXT-CHECKS` contra `Person` y roles reales. S05/V2-T032 produce `IT-ENR-ANNUAL`, `IT-NORMAL-FORMS` y assertions parciales de índices sin anticipar `IT-INDEXES-P0`, reservado para V2-T070; V2-T036 agrega cobertura de command/resultados/errores, cancelación, rollback, carrera sincronizada y agotamiento de tres intentos sin crear IDs de evidencia nuevos. V2-T046 revalida las protecciones completas mediante `IT-SCHEMAS-P0`, `IT-IMMUTABILITY`, `IT-SINGLETON` e `IT-REFERENCE-PERMISSIONS` después de materializar 11 tablas y la migración manual.
+S02 produce el harness probe. S03 posee tres IDs catalog-only y dos casos P0 auxiliares para concurrencia y rollback/cleanup de seed. S04 produce `UT-IDENTITY` y los tres IDs `IT-PERSON-*`/`IT-TEXT-CHECKS` contra `Person` y roles reales. S05/V2-T032 produce `IT-ENR-ANNUAL`, `IT-NORMAL-FORMS` y assertions parciales de índices sin anticipar `IT-INDEXES-P0`, reservado para V2-T070; V2-T036 agrega cobertura de command/resultados/errores, cancelación, rollback, carrera sincronizada y agotamiento de tres intentos sin crear IDs de evidencia nuevos. V2-T046 produjo y ejecutó en S07 las seis evidencias completas `IT-SCHEMAS-P0`, `IT-IMMUTABILITY`, `IT-SINGLETON`, `IT-REFERENCE-PERMISSIONS`, `IT-AUDIT-UTC-P0` e `IT-ROWVERSION-P0` después de materializar 11 tablas y la migración manual.
 
 ### Manifest P0 canónico: ID → productor único
 
