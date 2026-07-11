@@ -76,6 +76,7 @@ La salida esperada incluye `401` y `human gate failed: 401 > 400`; el último `t
 | S06 modelo (V2-T038,V2-T040–V2-T041) | `ea8335496badae0c4de4de81cb61a661a23f8da6` | `ea8335496badae0c4de4de81cb61a661a23f8da6` | `28e25a25546763b268a9565db466b79be6c52de7` | PASS: sin salida generada, 363 líneas humanas; cierre final registrado en la unidad siguiente. |
 | S06 workflow (V2-T039,V2-T042–V2-T043) | `f0fdfeea65cde336e1093ba2890b5d713d99fcfe` | `f0fdfeea65cde336e1093ba2890b5d713d99fcfe` | `247794aa41597f5c6d65934e3215a0f99a5d9352` | PASS: sin salida generada, 375 líneas humanas, dentro del límite sin excepción; S06 cerrado. |
 | S07 (V2-T044–V2-T046) | `0f777fbd17417b42351013c2477623808e55ce1f` | `130e642c053e02211268a407ac4dfd2746fc0363` | `a629a712bf7f3b7a7d994c3cec42a4391d28a0e2` | PASS: manifest exacto de cuatro rutas generadas y 384 líneas humanas excluyéndolas, sin excepción; S07 cerrado. |
+| S08 (V2-T047–V2-T051) | `1f2c246bce3b8e08c3dddb7ee36a284a9a5682eb` | `1f2c246bce3b8e08c3dddb7ee36a284a9a5682eb` | `dbf431ecadf4733160b8dba00638bde794c18e0d` | PASS con dispensa `EX-INTEGRITY-2026-07-11`: sin salida generada/manifest; gate humano inmutable mide `1976` líneas humanas (bundle `50ba6ed` aislado: 1556), supera 400; registrado por reconciliación S08–S11 autorizada por el usuario (completitud sobre tamaño de slice); S08 cerrado. |
 
 ### Secuencia exacta ejecutada
 
@@ -256,6 +257,19 @@ dotnet list package --vulnerable --include-transitive
 - Restore locked, builds Debug/Release con cero warnings/errores, format, vulnerabilidades, diff, árbol OpenAPI y checksum `802c13b91bf5c6425d24c540b6841a2abe134e084ea310fc2b7041e32c24a81a`: PASS.
 - Gate humano inmutable: PASS, salida exacta `384`, dentro del límite 400 y sin excepción.
 - V2-T044–V2-T046: PASS. S07 cerrado; V2-T047 inicia S08 bajo ownership del worktree API.
+
+## Evidencia técnica S08 host y catálogos — 2026-07-11
+
+- `SLICE_BASE=HUMAN_BASE=1f2c246bce3b8e08c3dddb7ee36a284a9a5682eb`; `HUMAN_HEAD=dbf431ecadf4733160b8dba00638bde794c18e0d`; sin salida generada ni manifest S08.
+- Composición honesta del rango: `50ba6ede15629624b212e87d44c9da4d02aae2a2` (bundle preexistente de API S08–S11, 1556 líneas humanas), `2a7bdd381c58349bc8a193141f632ba41f23bf66` (chore de configuración de Claude Code, `.claude/settings.json`+`CLAUDE.md`, 98), `6d2d9f9197c570ede01e9fd53e6d6cd3f88c48d8` (chore de registro de skills, 177), `937bf3d7c9626acaeac5a2da5a216dbf90ece6eb` (fix de formato, 15) y `dbf431ecadf4733160b8dba00638bde794c18e0d` (endpoints de salud, 136); la suma simple por commit da 1982, pero `937bf3d` reformatea líneas recién agregadas por `50ba6ed`, así que el diff neto real y verificado del rango completo (`git diff --numstat "$HUMAN_BASE"..."$HUMAN_HEAD" -- | ./scripts/check-human-lines.py`) es la cifra autoritativa: `1976`. Supera 400 y queda registrado bajo la dispensa de integridad autorizada por el usuario `EX-INTEGRITY-2026-07-11` (2026-07-11: completitud/integridad sobre el tamaño de slice para esta reconciliación S08–S11; `EX-PLAN-2026-07-10` no aplica aquí). El bundle `50ba6ed` es anterior al ledger y se reconcilia ahora; la evidencia de S09–S11 permanece pendiente y cerrará en sus propios slices.
+- Fixture: Testcontainers con imagen fijada `mcr.microsoft.com/mssql/server:2022-CU14-ubuntu-22.04`; `ConnectionStrings__InovaitTest` explícitamente ausente del entorno.
+- Targeted `Priority=P0&Evidence=IT-CATALOGS`: 3/3 PASS, en `tests/Inovait.IntegrationTests/Api/CatalogEndpointsTests.cs`.
+- Filtro `Priority=P0`: 65 unitarias + 49 integración = 114/114 PASS; suites Debug y Release: 71 unitarias + 53 integración = 124/124 en cada configuración; cero fallos/omitidas.
+- `dotnet restore`: PASS. Builds Debug y Release: PASS, cero warnings y cero errores. `dotnet format --verify-no-changes --no-restore`: PASS. `dotnet list package --vulnerable --include-transitive`: PASS, cero paquetes vulnerables en cinco proyectos. `git status --porcelain -- specs`: PASS, sin diferencias. Árbol OpenAPI y checksum `802c13b91bf5c6425d24c540b6841a2abe134e084ea310fc2b7041e32c24a81a`: PASS.
+- Endpoints de salud `/health/live` y `/health/ready` (probe real `CanConnectAsync`, degradación `503`) agregados en `dbf431e` fuera del contrato OpenAPI, por adición mandatada por el usuario; sin `.WithName`, el conteo de operationId runtime permanece en 10.
+- Desviación V2-T048: el fixture conserva `ConnectionStrings__InovaitTest` como fallback externo documentado y exclusivo de pruebas, por directiva del usuario del 2026-07-11; esta directiva sustituye la redacción de retiro original de la tarea sin alterar la ruta Testcontainers primaria.
+- OpenSpec strict/show/status, `gentle-ai sdd-status` y drift de 103 task lines: PASS, 51/103 completas y V2-T052 primera pendiente.
+- V2-T047–V2-T051: PASS. S08 cerrado; V2-T052 inicia S09.
 
 ## Notas operativas
 
