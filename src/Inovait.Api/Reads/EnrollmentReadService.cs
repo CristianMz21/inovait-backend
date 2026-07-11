@@ -2,6 +2,7 @@ using System.Linq.Expressions;
 using Inovait.Api.Contracts;
 using Inovait.Core.Domain.Academics;
 using Inovait.Core.Domain.Catalogs;
+using Inovait.Core.Features.Enrollments;
 using Inovait.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
@@ -17,7 +18,7 @@ public sealed class EnrollmentReadService(InovaitDbContext context, TimeProvider
         var row = await Query(enrollment => enrollment.Id == enrollmentId).SingleAsync(cancellationToken);
         return new CreateEnrollmentResponse(
             row.EnrollmentId, row.StudentId, studentReused, row.DocumentType, row.DocumentNumber,
-            row.FirstNames, row.LastNames, row.BirthDate, CalculateAge(row.BirthDate, today),
+            row.FirstNames, row.LastNames, row.BirthDate, AgeCalculator.Calculate(row.BirthDate, today),
             new SchoolSummary(row.SchoolId, row.SchoolName, row.Sector.ToString()),
             new AcademicYearSummary(row.AcademicYearId, row.AcademicYearName, row.AcademicYearStartDate,
                 row.AcademicYearEndDate, row.AcademicYearId == currentYearId),
@@ -38,7 +39,7 @@ public sealed class EnrollmentReadService(InovaitDbContext context, TimeProvider
             .ToListAsync(cancellationToken);
         return rows.Select(row => new EnrollmentListItem(
             row.EnrollmentId, row.StudentId, row.DocumentType, row.DocumentNumber, row.FirstNames, row.LastNames,
-            row.BirthDate, CalculateAge(row.BirthDate, today),
+            row.BirthDate, AgeCalculator.Calculate(row.BirthDate, today),
             new SchoolSummary(row.SchoolId, row.SchoolName, row.Sector.ToString()),
             new AcademicYearSummary(row.AcademicYearId, row.AcademicYearName, row.AcademicYearStartDate,
                 row.AcademicYearEndDate, row.AcademicYearId == currentYearId),
@@ -69,17 +70,6 @@ public sealed class EnrollmentReadService(InovaitDbContext context, TimeProvider
             .SingleAsync(cancellationToken);
 
     private DateOnly Today() => DateOnly.FromDateTime(timeProvider.GetUtcNow().UtcDateTime);
-
-    private static int CalculateAge(DateOnly birthDate, DateOnly asOfDate)
-    {
-        var age = asOfDate.Year - birthDate.Year;
-        if (birthDate > asOfDate.AddYears(-age))
-        {
-            age--;
-        }
-
-        return age;
-    }
 
     private sealed record EnrollmentRow(
         int EnrollmentId, int StudentId, string DocumentType, string DocumentNumber, string FirstNames,
