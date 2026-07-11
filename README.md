@@ -1,79 +1,56 @@
-# Inovait — Back End (.NET Core)
+# Inovait — Backend
 
-Back-end API for the **Inovait Enrollment Management System** (technical assessment).
+API planificada para la evaluación técnica de gestión de inscripciones escolares y contratos docentes.
 
-This repository currently ships only the project scaffold and documentation. **No source code has been written yet** by design — code will be added in subsequent commits that satisfy the spec below.
+> **Estado actual**: planificación únicamente. El repositorio no contiene scaffold .NET, proyectos, código fuente, pruebas, migraciones ni `database/setup.sql`. Los artefactos de `specs/`, `docs/`, `.specify/` y `.agents/` están en el working tree sin seguimiento; el commit actual `ce160e9...` contiene solo el baseline inicial de README/gitignore.
 
-## Tech Stack (planned)
+## Compromiso de una jornada
 
-- **Runtime:** .NET 8 (LTS)
-- **Framework:** ASP.NET Core Web API
-- **Persistence:** SQL Server (preferred per brief) via Entity Framework Core
-- **Validation:** FluentValidation
-- **Logging:** `Microsoft.Extensions.Logging` (structured)
-- **Testing:** xUnit + FluentAssertions
+P0 es el único MVP comprometido:
 
-## Scope (from the assessment brief)
+1. crear o reutilizar `Student` y crear `Enrollment` atómicamente;
+2. consultar inscripciones por School, Grade y AcademicYear;
+3. crear contratos independientes de un Teacher para varias escuelas y consultarlos;
+4. proveer catálogos necesarios, SQL mínimo, pruebas críticas y walkthrough del evaluador.
 
-The system manages student enrollments and teacher contracts for a single city and must answer questions like:
+P1 mantiene planificación completa para los reportes municipales, pero es una extensión condicional después de evidencia P0.
 
-- Children enrolled between ages 3–7 (and age buckets in general).
-- Teachers contracted by public vs. private sector.
-- School with the highest number of students.
-- Historical grade/group participation per student and assigned teacher.
+## Stack aprobado para implementación futura
 
-### Business rules (from the brief)
+- SDK .NET `10.0.109`, C# 14 y `net10.0`.
+- ASP.NET Core/EF Core SQL Server `10.0.9`.
+- SQL Server 2022.
+- xUnit v3 `3.2.2`, `Microsoft.AspNetCore.Mvc.Testing` `10.0.9` y `Testcontainers.MsSql` `4.13.0`.
+- Validación integrada de ASP.NET Core y servicios de dominio explícitos; no se planifican FluentValidation ni FluentAssertions.
 
-1. A teacher may work at more than one school simultaneously.
-2. A student belongs to exactly one school.
-3. All schools belong to the same city.
-4. Schools are public or private sector.
-5. Schools track enrollment per grade.
-6. Students are assigned to a specific group within a grade; year-over-year, group changes are tracked.
+Estas son decisiones de planificación, no dependencias instaladas.
 
-### Functional endpoints covered by the back-end
+## Contrato HTTP canónico
 
-- `POST /api/students` — create a student in a school, grade, and year.
-- `GET /api/students` — query students by **grade**, **school**, and **year**.
-- `GET /api/teachers` — list teachers and their school assignments.
-- `GET /api/reports/*` — KPIs (enrollment by age bucket, public/private split, top school, student history).
+El bundle modular está en [`specs/001-school-enrollment-management/contracts/openapi.yaml`](specs/001-school-enrollment-management/contracts/openapi.yaml) y preserva exactamente 15 `operationId`.
 
-Schools, grades, and teachers will be **seeded via constants or DB lookup tables**. No admin CRUD is required for them.
+Rutas funcionales principales:
 
-## Database (planned)
+- `POST /api/enrollments` — alta atómica de Student/Enrollment.
+- `GET /api/enrollments` — consulta conjunta por `schoolId`, `gradeId` y `academicYearId`.
+- `POST /api/teachers/{teacherId}/contracts` — contratos multiescuela atómicos.
+- `GET /api/teachers/{teacherId}/contracts` y `GET /api/schools/{schoolId}/teachers` — historia contractual.
+- `GET /api/reports/*` y `GET /api/students/{documentType}/{documentNumber}/history` — P1 condicional.
 
-SQL Server is the preferred engine per the brief.
+Las referencias School/Grade/AcademicYear existentes siempre forman un contexto consultable; sin ClassGroup se devuelve `200 []`. No existe ni se planifica una tabla adicional de oferta académica.
 
-Deliverables include a **DB script with only the tables and seed data needed to run the functional endpoints** — nothing more.
+El checksum combinado local `802c13b91bf5c6425d24c540b6841a2abe134e084ea310fc2b7041e32c24a81a` solo prueba el working tree. Antes de implementar se requiere autorización explícita para versionar la planificación y registrar un commit que contenga el bundle completo.
 
-## Non-Goals (out of scope)
+## Ejecución futura
 
-- Authentication / authorization.
-- Multi-city support.
-- Real-time features (SignalR, etc.).
+Los comandos se documentarán y validarán durante apply. Las rutas previstas son:
 
-## Repository Conventions
+- integración primaria con Testcontainers;
+- `database/setup.sql` mínimo para el evaluador;
+- conexión SQL Server externa solo como fallback aislado, no como segunda puerta obligatoria.
 
-- **Branching:** Trunk-based; short-lived feature branches named `feat/<slug>`, `fix/<slug>`.
-- **Commits:** Conventional Commits (`feat:`, `fix:`, `chore:`, `docs:`, `refactor:`, `test:`).
-- **No AI attribution** in commit messages.
-- **Strict typing:** `<Nullable>enable</Nullable>`, `<TreatWarningsAsErrors>true</TreatWarningsAsErrors>`.
-- **No suppressions:** no `#pragma warning disable`, no `// type: ignore`, no skipped tests.
+Consultar [quickstart.md](specs/001-school-enrollment-management/quickstart.md), [assessment-baseline.md](docs/assessment-baseline.md) y [requirements-traceability.md](docs/requirements-traceability.md).
 
-## Local Setup (once source code lands)
+## Fuera de alcance
 
-```bash
-dotnet restore
-dotnet build
-dotnet run --project src/Inovait.Api
-```
-
-Database migrations will be added via `dotnet ef migrations add <Name>` in a later commit.
-
-## Related
-
-- Front-end repo: see `../inovait-frontend` (sibling directory).
-
----
-
-**Status:** Scaffold only — awaiting implementation per the technical assessment.
+Autenticación, autorización, microservicios, CQRS/event sourcing, cloud, CRUD administrativo, paginación y datos personales reales.

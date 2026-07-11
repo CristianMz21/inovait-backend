@@ -1,0 +1,167 @@
+/api/enrollments:
+  post:
+    tags: [Enrollments]
+    operationId: createEnrollment
+    summary: Crear o reutilizar estudiante e inscribirlo atómicamente
+    description: >-
+      Normaliza el documento. Crea Student solo si no existe y crea Enrollment
+      en la misma transacción. La identidad discrepante o la segunda inscripción
+      anual producen conflicto sin cambios parciales.
+    security: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema: { $ref: ../components/enrollments.yaml#/schemas/CreateEnrollmentRequest }
+          example:
+            student:
+              documentType: DNI
+              documentNumber: 99.001.101
+              firstNames: Ana María
+              lastNames: Solís
+              birthDate: '2018-07-10'
+            schoolId: 1
+            academicYearId: 2
+            gradeId: 1
+            classGroupId: 10
+    responses:
+      '201':
+        description: Inscripción creada atómicamente.
+        content:
+          application/json:
+            schema: { $ref: ../components/enrollments.yaml#/schemas/CreateEnrollmentResponse }
+            example:
+              enrollmentId: 100
+              studentId: 50
+              studentReused: false
+              documentType: DNI
+              documentNumber: 99.001.101
+              firstNames: Ana María
+              lastNames: Solís
+              birthDate: '2018-07-10'
+              age: 8
+              school: { id: 1, name: Escuela Río Claro, sector: Public }
+              academicYear: { id: 2, name: '2026', startDate: '2026-03-02', endDate: '2026-12-18', isCurrent: true }
+              grade: { id: 1, name: Grade 1, sortOrder: 1 }
+              classGroup: { id: 10, code: A, schoolId: 1, academicYearId: 2, gradeId: 1 }
+      '400': { $ref: ../components/problems.yaml#/responses/BadRequest }
+      '404': { $ref: ../components/problems.yaml#/responses/NotFound }
+      '409':
+        description: Conflicto de identidad o segunda inscripción anual.
+        content:
+          application/problem+json:
+            schema: { $ref: ../components/problems.yaml#/schemas/ProblemDetails }
+            example:
+              type: https://inovait.local/problems/enrollment-conflict
+              title: La inscripción entra en conflicto con la historia existente
+              status: 409
+              code: enrollment_conflict
+              detail: El estudiante ya tiene una inscripción para el año académico indicado.
+      '422': { $ref: ../components/problems.yaml#/responses/UnprocessableEntity }
+  get:
+    tags: [Enrollments]
+    operationId: listEnrollments
+    summary: Consultar inscripciones por escuela, grado y año
+    description: >-
+      Los tres filtros son obligatorios. Cualquier School, Grade y AcademicYear
+      existentes forman un contexto consultable; si no hay grupos o inscripciones,
+      devuelve []. Orden ascendente por lastNames, firstNames, documentType,
+      documentNumber y enrollmentId.
+    security: []
+    parameters:
+      - name: schoolId
+        in: query
+        required: true
+        schema: { type: integer, format: int32, minimum: 1 }
+      - name: gradeId
+        in: query
+        required: true
+        schema: { type: integer, format: int32, minimum: 1 }
+      - name: academicYearId
+        in: query
+        required: true
+        schema: { type: integer, format: int32, minimum: 1 }
+      - name: asOfDate
+        in: query
+        description: Fecha para edad; usa la fecha actual si se omite.
+        schema: { type: string, format: date }
+    responses:
+      '200':
+        description: Inscripciones coincidentes o colección vacía.
+        content:
+          application/json:
+            schema:
+              type: array
+              items: { $ref: ../components/enrollments.yaml#/schemas/EnrollmentListItem }
+            example:
+              - enrollmentId: 100
+                studentId: 50
+                documentType: DNI
+                documentNumber: 99.001.101
+                firstNames: Ana María
+                lastNames: Solís
+                birthDate: '2018-07-10'
+                age: 8
+                school: { id: 1, name: Escuela Río Claro, sector: Public }
+                academicYear: { id: 2, name: '2026', startDate: '2026-03-02', endDate: '2026-12-18', isCurrent: true }
+                grade: { id: 1, name: Grade 1, sortOrder: 1 }
+                classGroup: { id: 10, code: A, schoolId: 1, academicYearId: 2, gradeId: 1 }
+      '400': { $ref: ../components/problems.yaml#/responses/BadRequest }
+      '404': { $ref: ../components/problems.yaml#/responses/NotFound }
+/api/students/{documentType}/{documentNumber}/history:
+  get:
+    tags: [Enrollments, Reports]
+    operationId: getStudentHistory
+    summary: Consultar historia académica y docente por identidad
+    description: >-
+      Normaliza ambos segmentos y devuelve cada inscripción con todas sus
+      asignaciones. Las inscripciones se ordenan por academicYear.startDate
+      descendente y enrollmentId ascendente; una inscripción sin asignaciones
+      contiene un array vacío.
+    security: []
+    parameters:
+      - name: documentType
+        in: path
+        required: true
+        schema: { type: string, minLength: 1, maxLength: 20 }
+        example: DNI
+      - name: documentNumber
+        in: path
+        required: true
+        schema: { type: string, minLength: 1, maxLength: 32 }
+        example: 99-001-101
+    responses:
+      '200':
+        description: Historia anual completa y ordenada.
+        content:
+          application/json:
+            schema: { $ref: ../components/enrollments.yaml#/schemas/StudentHistoryResponse }
+            example:
+              studentId: 50
+              documentType: DNI
+              documentNumber: 99.001.101
+              firstNames: Ana María
+              lastNames: Solís
+              birthDate: '2018-07-10'
+              enrollments:
+                - enrollmentId: 100
+                  academicYear: { id: 2, name: '2026', startDate: '2026-03-02', endDate: '2026-12-18', isCurrent: true }
+                  school: { id: 1, name: Escuela Río Claro, sector: Public }
+                  grade: { id: 1, name: Grade 1, sortOrder: 1 }
+                  classGroup: { id: 10, code: A, schoolId: 1, academicYearId: 2, gradeId: 1 }
+                  teachingAssignments:
+                    - assignmentId: 31
+                      teacher: { id: 5, documentType: DNI, documentNumber: '88001001', firstNames: Lucía, lastNames: Benítez }
+                      subject: { id: 3, code: MATH, name: Matemática }
+                      weekdays: [1, 3, 5]
+      '400': { $ref: ../components/problems.yaml#/responses/BadRequest }
+      '404':
+        description: La identidad normalizada no corresponde a un estudiante.
+        content:
+          application/problem+json:
+            schema: { $ref: ../components/problems.yaml#/schemas/ProblemDetails }
+            example:
+              type: https://inovait.local/problems/student-not-found
+              title: No se encontró el estudiante
+              status: 404
+              code: student_not_found

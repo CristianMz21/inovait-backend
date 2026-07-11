@@ -1,0 +1,96 @@
+/api/teachers/{teacherId}/contracts:
+  parameters:
+    - name: teacherId
+      in: path
+      required: true
+      schema: { type: integer, format: int32, minimum: 1 }
+  post:
+    tags: [TeacherContracts]
+    operationId: createTeacherContracts
+    summary: Crear contratos independientes en varias escuelas
+    description: >-
+      La solicitud es atómica y crea contratos Confirmed. Escuelas repetidas,
+      duplicados o intervalos superpuestos inclusivamente producen 409 y cero inserciones.
+    security: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema: { $ref: ../components/teacher-contracts.yaml#/schemas/CreateTeacherContractsRequest }
+          example:
+            schoolIds: [1, 2]
+            startDate: '2026-03-01'
+            endDate: null
+    responses:
+      '201':
+        description: Un contrato independiente por escuela, ordenado ascendentemente por school.name e id.
+        content:
+          application/json:
+            schema:
+              type: array
+              minItems: 1
+              items: { $ref: ../components/teacher-contracts.yaml#/schemas/TeacherContractResponse }
+            example:
+              - id: 20
+                teacherId: 5
+                school: { id: 1, name: Escuela Río Claro, sector: Public }
+                startDate: '2026-03-01'
+                endDate: null
+                persistedStatus: Confirmed
+                effectiveStatus: Effective
+                evaluatedAt: '2026-07-10'
+              - id: 21
+                teacherId: 5
+                school: { id: 2, name: Instituto Horizonte, sector: Private }
+                startDate: '2026-03-01'
+                endDate: null
+                persistedStatus: Confirmed
+                effectiveStatus: Effective
+                evaluatedAt: '2026-07-10'
+      '400': { $ref: ../components/problems.yaml#/responses/BadRequest }
+      '404': { $ref: ../components/problems.yaml#/responses/NotFound }
+      '409':
+        description: Escuela repetida, contrato duplicado o período superpuesto.
+        content:
+          application/problem+json:
+            schema: { $ref: ../components/problems.yaml#/schemas/ProblemDetails }
+            example:
+              type: https://inovait.local/problems/teacher-contract-conflict
+              title: La solicitud contractual entra en conflicto
+              status: 409
+              code: teacher_contract_conflict
+              detail: La solicitud repite una escuela o superpone un contrato existente.
+              errors:
+                schoolIds: [No puede contener identificadores repetidos.]
+      '422': { $ref: ../components/problems.yaml#/responses/UnprocessableEntity }
+  get:
+    tags: [TeacherContracts]
+    operationId: listTeacherContracts
+    summary: Listar contratos históricos de un docente
+    description: >-
+      Orden ascendente por startDate, school.name e id; no oculta contratos no efectivos.
+    security: []
+    parameters:
+      - name: asOfDate
+        in: query
+        description: Fecha para effectiveStatus; usa la fecha actual si se omite.
+        schema: { type: string, format: date }
+    responses:
+      '200':
+        description: Contratos ordenados o colección vacía.
+        content:
+          application/json:
+            schema:
+              type: array
+              items: { $ref: ../components/teacher-contracts.yaml#/schemas/TeacherContractResponse }
+            example:
+              - id: 20
+                teacherId: 5
+                school: { id: 1, name: Escuela Río Claro, sector: Public }
+                startDate: '2026-03-01'
+                endDate: null
+                persistedStatus: Confirmed
+                effectiveStatus: Effective
+                evaluatedAt: '2026-07-10'
+      '400': { $ref: ../components/problems.yaml#/responses/BadRequest }
+      '404': { $ref: ../components/problems.yaml#/responses/NotFound }

@@ -1,0 +1,125 @@
+/api/reports/age-distribution:
+  get:
+    tags: [Reports]
+    operationId: getAgeDistribution
+    summary: Obtener conteo y distribución por rangos de edad
+    description: >-
+      Responde BQ-001 y BQ-002 sobre inscripciones del año. School y Grade son
+      filtros opcionales acumulativos. Cualquier combinación de referencias
+      existentes es consultable y produce conteos cero si no tiene grupos o
+      inscripciones; menores de 3 no integran los rangos.
+    security: []
+    parameters:
+      - name: academicYearId
+        in: query
+        required: true
+        schema: { type: integer, format: int32, minimum: 1 }
+      - name: schoolId
+        in: query
+        schema: { type: integer, format: int32, minimum: 1 }
+      - name: gradeId
+        in: query
+        schema: { type: integer, format: int32, minimum: 1 }
+      - name: asOfDate
+        in: query
+        description: Usa fecha actual si se omite; no puede preceder un nacimiento incluido.
+        schema: { type: string, format: date }
+    responses:
+      '200':
+        description: Distribución; un contexto sin inscripciones contiene ceros.
+        content:
+          application/json:
+            schema: { $ref: ../components/reports.yaml#/schemas/AgeDistributionResponse }
+            example:
+              academicYearId: 2
+              schoolId: null
+              gradeId: null
+              asOfDate: '2026-07-10'
+              age3To7: { minimumAge: 3, maximumAge: 7, count: 4 }
+              age8To12: { minimumAge: 8, maximumAge: 12, count: 6 }
+              ageOver12: { minimumAge: 13, maximumAge: null, count: 2 }
+      '400': { $ref: ../components/problems.yaml#/responses/BadRequest }
+      '404': { $ref: ../components/problems.yaml#/responses/NotFound }
+      '422':
+        description: La fecha de referencia incumple una regla semántica.
+        content:
+          application/problem+json:
+            schema: { $ref: ../components/problems.yaml#/schemas/ProblemDetails }
+            example:
+              type: https://inovait.local/problems/as-of-date-invalid
+              title: La fecha de referencia no es válida
+              status: 422
+              code: as_of_date_invalid
+/api/reports/teacher-counts-by-sector:
+  get:
+    tags: [Reports]
+    operationId: getDistinctTeacherCountsBySector
+    summary: Contar docentes distintos por sector
+    description: >-
+      Sin período usa la fecha actual. Con período exige periodStart y periodEnd,
+      extremos inclusivos. Solo contratos Confirmed con intersección temporal.
+    security: []
+    parameters:
+      - name: periodStart
+        in: query
+        description: Debe enviarse junto con periodEnd.
+        schema: { type: string, format: date }
+      - name: periodEnd
+        in: query
+        description: Debe enviarse junto con periodStart y ser igual o posterior.
+        schema: { type: string, format: date }
+    responses:
+      '200':
+        description: Dos sectores en orden fijo, incluidos conteos cero.
+        content:
+          application/json:
+            schema: { $ref: ../components/reports.yaml#/schemas/TeacherCountsBySectorResponse }
+            example:
+              periodStart: '2026-07-10'
+              periodEnd: '2026-07-10'
+              publicDistinctTeacherCount: 3
+              privateDistinctTeacherCount: 2
+      '400': { $ref: ../components/problems.yaml#/responses/BadRequest }
+      '422':
+        description: El período completo tiene fin anterior al inicio.
+        content:
+          application/problem+json:
+            schema: { $ref: ../components/problems.yaml#/schemas/ProblemDetails }
+            example:
+              type: https://inovait.local/problems/period-invalid
+              title: El período no es válido
+              status: 422
+              code: period_invalid
+              errors:
+                periodEnd: [Debe ser igual o posterior a periodStart.]
+/api/reports/top-schools:
+  get:
+    tags: [Reports]
+    operationId: getTopSchoolsByEnrollment
+    summary: Obtener todas las escuelas líderes de un año
+    description: >-
+      Cuenta Enrollment por School mediante ClassGroup y devuelve todos los empates,
+      ordenados por school.name y school.id. Un año sin inscripciones devuelve [].
+    security: []
+    parameters:
+      - name: academicYearId
+        in: query
+        required: true
+        schema: { type: integer, format: int32, minimum: 1 }
+    responses:
+      '200':
+        description: Escuelas empatadas en el máximo o colección vacía.
+        content:
+          application/json:
+            schema:
+              type: array
+              items: { $ref: ../components/reports.yaml#/schemas/TopSchoolResponse }
+            example:
+              - school: { id: 1, name: Escuela Río Claro, sector: Public }
+                academicYearId: 2
+                enrollmentCount: 12
+              - school: { id: 2, name: Instituto Horizonte, sector: Private }
+                academicYearId: 2
+                enrollmentCount: 12
+      '400': { $ref: ../components/problems.yaml#/responses/BadRequest }
+      '404': { $ref: ../components/problems.yaml#/responses/NotFound }

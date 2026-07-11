@@ -1,0 +1,57 @@
+schemas:
+  AgeDistributionResponse:
+    type: object
+    additionalProperties: false
+    required: [academicYearId, asOfDate, age3To7, age8To12, ageOver12]
+    properties:
+      academicYearId: { type: integer, format: int32, example: 2 }
+      schoolId: { type: [integer, "null"], format: int32, example: null }
+      gradeId: { type: [integer, "null"], format: int32, example: null }
+      asOfDate: { type: string, format: date, example: '2026-07-10' }
+      age3To7:
+        type: object
+        additionalProperties: false
+        required: [minimumAge, maximumAge, count]
+        properties:
+          minimumAge: { type: integer, const: 3 }
+          maximumAge: { type: integer, const: 7 }
+          count: { type: integer, minimum: 0, example: 4 }
+      age8To12:
+        type: object
+        additionalProperties: false
+        required: [minimumAge, maximumAge, count]
+        properties:
+          minimumAge: { type: integer, const: 8 }
+          maximumAge: { type: integer, const: 12 }
+          count: { type: integer, minimum: 0, example: 6 }
+      ageOver12:
+        type: object
+        additionalProperties: false
+        required: [minimumAge, maximumAge, count]
+        properties:
+          minimumAge: { type: integer, const: 13 }
+          maximumAge: { type: "null" }
+          count: { type: integer, minimum: 0, example: 2 }
+  TeacherCountsBySectorResponse:
+    type: object
+    additionalProperties: false
+    required: [periodStart, periodEnd, publicDistinctTeacherCount, privateDistinctTeacherCount]
+    properties:
+      periodStart: { type: string, format: date, example: '2026-07-10' }
+      periodEnd: { type: string, format: date, example: '2026-07-10' }
+      publicDistinctTeacherCount:
+        type: integer
+        minimum: 0
+        example: 3
+      privateDistinctTeacherCount:
+        type: integer
+        minimum: 0
+        example: 2
+  TopSchoolResponse:
+    type: object
+    additionalProperties: false
+    required: [school, academicYearId, enrollmentCount]
+    properties:
+      school: { $ref: ./catalogs.yaml#/schemas/SchoolSummary }
+      academicYearId: { type: integer, format: int32, example: 2 }
+      enrollmentCount: { type: integer, minimum: 1, example: 12 }

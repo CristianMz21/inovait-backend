@@ -1,0 +1,86 @@
+schemas:
+  ProblemDetails:
+    type: object
+    additionalProperties: true
+    required: [type, title, status, code]
+    properties:
+      type:
+        type: string
+        format: uri-reference
+        example: https://inovait.local/problems/academic-context-invalid
+      title:
+        type: string
+        example: El contexto académico no es válido
+      status:
+        type: integer
+        minimum: 400
+        maximum: 599
+        example: 422
+      detail:
+        type: [string, "null"]
+        example: El grupo no pertenece a la escuela, grado y año indicados.
+      instance:
+        type: [string, "null"]
+        format: uri-reference
+        example: /api/enrollments
+      code:
+        type: string
+        description: Código estable y legible por clientes.
+        example: academic_context_invalid
+      errors:
+        type: object
+        description: Errores por campo cuando corresponda.
+        additionalProperties:
+          type: array
+          items:
+            type: string
+        example:
+          classGroupId:
+            - No coincide con el contexto académico solicitado.
+responses:
+  BadRequest:
+    description: Contrato HTTP ausente, mal formado o con tipos/formato inválidos.
+    content:
+      application/problem+json:
+        schema:
+          $ref: '#/schemas/ProblemDetails'
+        example:
+          type: https://inovait.local/problems/invalid-request
+          title: La solicitud no es válida
+          status: 400
+          code: invalid_request
+          errors:
+            academicYearId: [El campo es obligatorio.]
+  NotFound:
+    description: Una referencia o identidad solicitada no existe.
+    content:
+      application/problem+json:
+        schema:
+          $ref: '#/schemas/ProblemDetails'
+        example:
+          type: https://inovait.local/problems/resource-not-found
+          title: No se encontró el recurso
+          status: 404
+          code: resource_not_found
+  Conflict:
+    description: Conflicto con identidad, unicidad o historia ya persistida.
+    content:
+      application/problem+json:
+        schema:
+          $ref: '#/schemas/ProblemDetails'
+        example:
+          type: https://inovait.local/problems/history-conflict
+          title: La operación entra en conflicto con la historia existente
+          status: 409
+          code: history_conflict
+  UnprocessableEntity:
+    description: Solicitud bien formada que incumple una regla semántica.
+    content:
+      application/problem+json:
+        schema:
+          $ref: '#/schemas/ProblemDetails'
+        example:
+          type: https://inovait.local/problems/business-rule-violation
+          title: La solicitud incumple una regla de negocio
+          status: 422
+          code: business_rule_violation

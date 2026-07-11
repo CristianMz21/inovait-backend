@@ -1,0 +1,145 @@
+/api/schools:
+  get:
+    tags: [Catalogs]
+    operationId: listSchools
+    summary: Listar escuelas precargadas
+    description: Orden por name y luego id.
+    security: []
+    responses:
+      '200':
+        description: Escuelas ordenadas.
+        content:
+          application/json:
+            schema:
+              type: array
+              items: { $ref: ../components/catalogs.yaml#/schemas/SchoolSummary }
+            example:
+              - { id: 1, name: Escuela Río Claro, sector: Public }
+              - { id: 2, name: Instituto Horizonte, sector: Private }
+/api/grades:
+  get:
+    tags: [Catalogs]
+    operationId: listGrades
+    summary: Listar grados precargados
+    description: Orden por sortOrder y luego id.
+    security: []
+    responses:
+      '200':
+        description: Grados ordenados.
+        content:
+          application/json:
+            schema:
+              type: array
+              items: { $ref: ../components/catalogs.yaml#/schemas/GradeSummary }
+/api/academic-years:
+  get:
+    tags: [Catalogs]
+    operationId: listAcademicYears
+    summary: Listar años académicos
+    description: Orden por startDate descendente y luego id.
+    security: []
+    responses:
+      '200':
+        description: Años académicos ordenados.
+        content:
+          application/json:
+            schema:
+              type: array
+              items: { $ref: ../components/catalogs.yaml#/schemas/AcademicYearSummary }
+/api/class-groups:
+  get:
+    tags: [Catalogs]
+    operationId: listClassGroups
+    summary: Listar grupos por contexto académico
+    description: >-
+      Los filtros opcionales se aplican acumulativamente. Cualquier combinación
+      de referencias existentes es consultable y puede devolver []; orden
+      ascendente por code e id.
+    security: []
+    parameters:
+      - name: schoolId
+        in: query
+        schema: { type: integer, format: int32, minimum: 1 }
+      - name: gradeId
+        in: query
+        schema: { type: integer, format: int32, minimum: 1 }
+      - name: academicYearId
+        in: query
+        schema: { type: integer, format: int32, minimum: 1 }
+    responses:
+      '200':
+        description: Grupos filtrados o colección vacía.
+        content:
+          application/json:
+            schema:
+              type: array
+              items: { $ref: ../components/catalogs.yaml#/schemas/ClassGroupSummary }
+      '400': { $ref: ../components/problems.yaml#/responses/BadRequest }
+      '404': { $ref: ../components/problems.yaml#/responses/NotFound }
+/api/teachers:
+  get:
+    tags: [Catalogs]
+    operationId: listTeachers
+    summary: Listar docentes precargados
+    description: Orden por lastNames, firstNames, documentType, documentNumber e id.
+    security: []
+    responses:
+      '200':
+        description: Docentes ordenados.
+        content:
+          application/json:
+            schema:
+              type: array
+              items: { $ref: ../components/catalogs.yaml#/schemas/TeacherSummary }
+/api/subjects:
+  get:
+    tags: [Catalogs]
+    operationId: listSubjects
+    summary: Listar materias precargadas
+    description: Orden por name, code e id.
+    security: []
+    responses:
+      '200':
+        description: Materias ordenadas.
+        content:
+          application/json:
+            schema:
+              type: array
+              items: { $ref: ../components/catalogs.yaml#/schemas/SubjectSummary }
+/api/schools/{schoolId}/teachers:
+  get:
+    tags: [TeacherContracts]
+    operationId: listTeachersBySchool
+    summary: Listar docentes asociados con una escuela
+    description: >-
+      Devuelve contratos cuyo estado efectivo se evalúa a asOfDate; no oculta
+      contratos históricos. Orden ascendente por teacher.lastNames,
+      teacher.firstNames, teacher.documentType, teacher.documentNumber y contractId.
+    security: []
+    parameters:
+      - name: schoolId
+        in: path
+        required: true
+        schema: { type: integer, format: int32, minimum: 1 }
+      - name: asOfDate
+        in: query
+        description: Fecha de evaluación; usa la fecha actual si se omite.
+        schema: { type: string, format: date }
+    responses:
+      '200':
+        description: Asociaciones históricas ordenadas o colección vacía.
+        content:
+          application/json:
+            schema:
+              type: array
+              items: { $ref: ../components/catalogs.yaml#/schemas/SchoolTeacherSummary }
+            example:
+              - teacher: { id: 5, documentType: DNI, documentNumber: '88001001', firstNames: Lucía, lastNames: Benítez }
+                contractId: 20
+                persistedStatus: Confirmed
+                effectiveStatus: Effective
+                evaluatedAt: '2026-07-10'
+                startDate: '2026-03-01'
+                endDate: null
+      '400': { $ref: ../components/problems.yaml#/responses/BadRequest }
+      '404': { $ref: ../components/problems.yaml#/responses/NotFound }

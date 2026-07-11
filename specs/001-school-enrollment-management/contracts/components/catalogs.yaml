@@ -1,0 +1,76 @@
+schemas:
+  SchoolSector:
+    type: string
+    enum: [Public, Private]
+  SchoolSummary:
+    type: object
+    additionalProperties: false
+    required: [id, name, sector]
+    properties:
+      id: { type: integer, format: int32, example: 1 }
+      name: { type: string, example: Escuela Río Claro }
+      sector: { $ref: '#/schemas/SchoolSector' }
+  GradeSummary:
+    type: object
+    additionalProperties: false
+    required: [id, name, sortOrder]
+    properties:
+      id: { type: integer, format: int32, example: 1 }
+      name: { type: string, example: Grade 1 }
+      sortOrder: { type: integer, format: int32, example: 1 }
+  AcademicYearSummary:
+    type: object
+    additionalProperties: false
+    required: [id, name, startDate, endDate, isCurrent]
+    properties:
+      id: { type: integer, format: int32, example: 2 }
+      name: { type: string, example: '2026' }
+      startDate: { type: string, format: date, example: '2026-03-02' }
+      endDate: { type: string, format: date, example: '2026-12-18' }
+      isCurrent: { type: boolean, example: true }
+  ClassGroupSummary:
+    type: object
+    additionalProperties: false
+    required: [id, code, schoolId, academicYearId, gradeId]
+    properties:
+      id: { type: integer, format: int32, example: 10 }
+      code: { type: string, example: A }
+      schoolId: { type: integer, format: int32, example: 1 }
+      academicYearId: { type: integer, format: int32, example: 2 }
+      gradeId: { type: integer, format: int32, example: 1 }
+  TeacherSummary:
+    type: object
+    additionalProperties: false
+    required: [id, documentType, documentNumber, firstNames, lastNames]
+    properties:
+      id: { type: integer, format: int32, example: 5 }
+      documentType: { type: string, example: DNI }
+      documentNumber: { type: string, example: '99001001' }
+      firstNames: { type: string, example: Lucía }
+      lastNames: { type: string, example: Benítez }
+  SubjectSummary:
+    type: object
+    additionalProperties: false
+    required: [id, code, name]
+    properties:
+      id: { type: integer, format: int32, example: 3 }
+      code: { type: string, example: MATH }
+      name: { type: string, example: Matemática }
+  SchoolTeacherSummary:
+    type: object
+    additionalProperties: false
+    required: [teacher, contractId, persistedStatus, effectiveStatus, evaluatedAt, startDate, endDate]
+    properties:
+      teacher: { $ref: '#/schemas/TeacherSummary' }
+      contractId: { type: integer, format: int32, example: 20 }
+      persistedStatus:
+        type: string
+        enum: [Confirmed, Cancelled]
+        example: Confirmed
+      effectiveStatus:
+        type: string
+        enum: [Upcoming, Effective, Expired, Cancelled]
+        example: Effective
+      evaluatedAt: { type: string, format: date, example: '2026-07-10' }
+      startDate: { type: string, format: date, example: '2026-03-01' }
+      endDate: { type: [string, "null"], format: date, example: null }

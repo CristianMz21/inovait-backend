@@ -1,0 +1,77 @@
+openapi: 3.1.0
+info:
+  title: Inovait School Enrollment API
+  version: 1.0.0
+  description: >-
+    Contrato canónico del backend para inscripción escolar, contratos docentes y
+    reportes municipales. No requiere autenticación y usa datos ficticios.
+servers:
+  - url: http://localhost:5000
+    description: Desarrollo local
+security: []
+tags:
+  - name: Catalogs
+  - name: Enrollments
+  - name: TeacherContracts
+  - name: Reports
+paths:
+  /api/schools:
+    $ref: ./paths/catalogs.yaml#/~1api~1schools
+  /api/grades:
+    $ref: ./paths/catalogs.yaml#/~1api~1grades
+  /api/academic-years:
+    $ref: ./paths/catalogs.yaml#/~1api~1academic-years
+  /api/class-groups:
+    $ref: ./paths/catalogs.yaml#/~1api~1class-groups
+  /api/teachers:
+    $ref: ./paths/catalogs.yaml#/~1api~1teachers
+  /api/subjects:
+    $ref: ./paths/catalogs.yaml#/~1api~1subjects
+  /api/schools/{schoolId}/teachers:
+    $ref: ./paths/catalogs.yaml#/~1api~1schools~1{schoolId}~1teachers
+  /api/enrollments:
+    $ref: ./paths/enrollments.yaml#/~1api~1enrollments
+  /api/students/{documentType}/{documentNumber}/history:
+    $ref: ./paths/enrollments.yaml#/~1api~1students~1{documentType}~1{documentNumber}~1history
+  /api/teachers/{teacherId}/contracts:
+    $ref: ./paths/teacher-contracts.yaml#/~1api~1teachers~1{teacherId}~1contracts
+  /api/reports/age-distribution:
+    $ref: ./paths/reports.yaml#/~1api~1reports~1age-distribution
+  /api/reports/teacher-counts-by-sector:
+    $ref: ./paths/reports.yaml#/~1api~1reports~1teacher-counts-by-sector
+  /api/reports/top-schools:
+    $ref: ./paths/reports.yaml#/~1api~1reports~1top-schools
+components:
+  schemas:
+    ProblemDetails:
+      $ref: ./components/problems.yaml#/schemas/ProblemDetails
+    SchoolSummary:
+      $ref: ./components/catalogs.yaml#/schemas/SchoolSummary
+    GradeSummary:
+      $ref: ./components/catalogs.yaml#/schemas/GradeSummary
+    AcademicYearSummary:
+      $ref: ./components/catalogs.yaml#/schemas/AcademicYearSummary
+    ClassGroupSummary:
+      $ref: ./components/catalogs.yaml#/schemas/ClassGroupSummary
+    TeacherSummary:
+      $ref: ./components/catalogs.yaml#/schemas/TeacherSummary
+    SubjectSummary:
+      $ref: ./components/catalogs.yaml#/schemas/SubjectSummary
+    CreateEnrollmentRequest:
+      $ref: ./components/enrollments.yaml#/schemas/CreateEnrollmentRequest
+    CreateEnrollmentResponse:
+      $ref: ./components/enrollments.yaml#/schemas/CreateEnrollmentResponse
+    EnrollmentListItem:
+      $ref: ./components/enrollments.yaml#/schemas/EnrollmentListItem
+    StudentHistoryResponse:
+      $ref: ./components/enrollments.yaml#/schemas/StudentHistoryResponse
+    CreateTeacherContractsRequest:
+      $ref: ./components/teacher-contracts.yaml#/schemas/CreateTeacherContractsRequest
+    TeacherContractResponse:
+      $ref: ./components/teacher-contracts.yaml#/schemas/TeacherContractResponse
+    AgeDistributionResponse:
+      $ref: ./components/reports.yaml#/schemas/AgeDistributionResponse
+    TeacherCountsBySectorResponse:
+      $ref: ./components/reports.yaml#/schemas/TeacherCountsBySectorResponse
+    TopSchoolResponse:
+      $ref: ./components/reports.yaml#/schemas/TopSchoolResponse
