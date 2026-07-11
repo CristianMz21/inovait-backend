@@ -1,0 +1,16 @@
+Inovait.slnx
+global.json
+src/Inovait.Api/Inovait.Api.csproj
+src/Inovait.Api/Inovait.Api.http
+src/Inovait.Api/Program.cs
+src/Inovait.Api/Properties/launchSettings.json
+src/Inovait.Api/appsettings.Development.json
+src/Inovait.Api/appsettings.json
+src/Inovait.Core/Class1.cs
+src/Inovait.Core/Inovait.Core.csproj
+src/Inovait.Infrastructure/Class1.cs
+src/Inovait.Infrastructure/Inovait.Infrastructure.csproj
+tests/Inovait.IntegrationTests/Inovait.IntegrationTests.csproj
+tests/Inovait.IntegrationTests/UnitTest1.cs
+tests/Inovait.UnitTests/Inovait.UnitTests.csproj
+tests/Inovait.UnitTests/UnitTest1.cs

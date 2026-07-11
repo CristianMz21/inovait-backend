@@ -8,7 +8,7 @@
 
 ## Calidad del contenido
 
-- [x] No contiene detalles de implementación sobre lenguajes, frameworks, persistencia o estructura de código.
+- [x] Los requisitos técnicos aprobados del modelo de producción están aislados en REQ-053–REQ-063; las rutas y decisiones de implementación permanecen en plan/diseño.
 - [x] Se concentra en valor para personas usuarias y necesidades de negocio.
 - [x] Está escrita para partes interesadas no técnicas en español profesional neutro.
 - [x] Todas las secciones obligatorias están completas.
@@ -29,11 +29,11 @@
 - [x] Los requisitos funcionales tienen evidencia de aceptación trazable.
 - [x] Las historias cubren los recorridos principales y pueden probarse de forma independiente.
 - [x] La feature tiene resultados medibles para integridad, usabilidad y reportes.
-- [x] No se filtran decisiones de implementación propias de una fase de plan.
+- [x] La especificación expresa garantías verificables; las responsabilidades Fluent API, paths, SQL e índices detallados permanecen en artefactos de diseño.
 
 ## Notas
 
-- Validación completada en una iteración el 2026-07-10.
+- Validación repetida el 2026-07-10 tras incorporar REQ-053–REQ-063; no quedan placeholders ni contradicciones de schema.
 - `US1`, `US2` y `US3` conservan trazabilidad P0 explícita.
 - Las preguntas 1 y 2 comparten `US4`; por eso cinco preguntas se resuelven mediante cuatro capacidades de reporte.
-- La rama permanece en `main` porque no existe un hook `before_specify` habilitado para crear o cambiar ramas.
+- La rama actual verificada es `feat/production-data-model`; no se creó ni cambió desde esta fase.

@@ -1,52 +1,48 @@
-# Registro de skills
+# Skill Registry
 
-Índice generado durante la inicialización de GitHub Spec Kit. Este archivo no sustituye el contenido de cada `SKILL.md`; los agentes deben leer la ruta indicada antes de ejecutar una skill.
+Execution-time index of available skills and conventions.
+Subagents must read the referenced `SKILL.md` before use.
 
-## Convenciones del proyecto
+## Project conventions
 
-| Archivo | Alcance |
+| File | Notes |
 | --- | --- |
-| `/home/mackroph/Dev/Tecnica/inovait/inovait-backend/AGENTS.md` | Contexto administrado por la extensión `agent-context` de Spec Kit. |
+| `/home/mackroph/Dev/Tecnica/inovait/inovait-backend/AGENTS.md` | Project-level convention file. It references `specs/001-school-enrollment-management/plan.md`. |
 
-## Skills del proyecto
+## Skills
 
-Estas skills fueron instaladas por GitHub Spec Kit 0.11.1 para la integración con Codex y tienen prioridad sobre skills de usuario con el mismo nombre.
-
-| Skill | Activación | Ruta |
-| --- | --- | --- |
-| `speckit-agent-context-update` | Actualizar el bloque administrado por Spec Kit en el archivo de contexto del agente. | `/home/mackroph/Dev/Tecnica/inovait/inovait-backend/.agents/skills/speckit-agent-context-update/SKILL.md` |
-| `speckit-analyze` | Analizar de forma no destructiva la consistencia entre `spec.md`, `plan.md` y `tasks.md`. | `/home/mackroph/Dev/Tecnica/inovait/inovait-backend/.agents/skills/speckit-analyze/SKILL.md` |
-| `speckit-checklist` | Generar una lista de comprobación para los requisitos de una feature. | `/home/mackroph/Dev/Tecnica/inovait/inovait-backend/.agents/skills/speckit-checklist/SKILL.md` |
-| `speckit-clarify` | Resolver ambigüedades de la especificación antes de planificar. | `/home/mackroph/Dev/Tecnica/inovait/inovait-backend/.agents/skills/speckit-clarify/SKILL.md` |
-| `speckit-constitution` | Crear o actualizar los principios y la gobernanza del proyecto. | `/home/mackroph/Dev/Tecnica/inovait/inovait-backend/.agents/skills/speckit-constitution/SKILL.md` |
-| `speckit-implement` | Ejecutar las tareas del plan; no debe usarse durante fases limitadas a planificación. | `/home/mackroph/Dev/Tecnica/inovait/inovait-backend/.agents/skills/speckit-implement/SKILL.md` |
-| `speckit-plan` | Crear el plan de implementación y sus artefactos de diseño. | `/home/mackroph/Dev/Tecnica/inovait/inovait-backend/.agents/skills/speckit-plan/SKILL.md` |
-| `speckit-specify` | Crear o actualizar la especificación de una feature. | `/home/mackroph/Dev/Tecnica/inovait/inovait-backend/.agents/skills/speckit-specify/SKILL.md` |
-| `speckit-tasks` | Generar `tasks.md` con tareas ordenadas por dependencias. | `/home/mackroph/Dev/Tecnica/inovait/inovait-backend/.agents/skills/speckit-tasks/SKILL.md` |
-| `speckit-taskstoissues` | Convertir tareas existentes en issues de GitHub ordenadas por dependencias. | `/home/mackroph/Dev/Tecnica/inovait/inovait-backend/.agents/skills/speckit-taskstoissues/SKILL.md` |
-
-## Skills de usuario aplicables
-
-Se excluyen `_shared`, `skill-registry` y las skills `sdd-*` conforme a la disciplina de escaneo usada para este índice.
-
-| Skill | Activación | Ruta |
-| --- | --- | --- |
-| `1-bug-diagnosticar` | Diagnóstico disciplinado de bugs o regresiones de rendimiento. | `/home/mackroph/.config/opencode/skills/mattpocock/engineering/diagnose/SKILL.md` |
-| `1-bug-tdd-pruebas-primero` | Desarrollo guiado por pruebas con ciclo red-green-refactor. | `/home/mackroph/.config/opencode/skills/mattpocock/engineering/tdd/SKILL.md` |
-| `2-arq-mejorar-arquitectura` | Refactorización profunda y mejora de arquitectura. | `/home/mackroph/.config/opencode/skills/mattpocock/engineering/improve-codebase-architecture/SKILL.md` |
-| `5-prod-modo-cavernicola` | Comunicación técnica ultrabreve. | `/home/mackroph/.config/opencode/skills/mattpocock/productivity/caveman/SKILL.md` |
-| `accessibility` | Auditoría o mejora de accesibilidad web según WCAG 2.2. | `/home/mackroph/.config/opencode/skills/accessibility/SKILL.md` |
-| `branch-pr` | Crear o preparar pull requests con comprobaciones issue-first. | `/home/mackroph/.config/opencode/skills/branch-pr/SKILL.md` |
-| `chained-pr` | Dividir cambios extensos en pull requests encadenados. | `/home/mackroph/.config/opencode/skills/chained-pr/SKILL.md` |
-| `cognitive-doc-design` | Diseñar documentación con baja carga cognitiva. | `/home/mackroph/.config/opencode/skills/cognitive-doc-design/SKILL.md` |
-| `comment-writer` | Redactar comentarios de colaboración, revisión o issues. | `/home/mackroph/.config/opencode/skills/comment-writer/SKILL.md` |
-| `find-skills` | Buscar skills instalables para una capacidad solicitada. | `/home/mackroph/.agents/skills/find-skills/SKILL.md` |
-| `frontend-design` | Diseñar interfaces web de calidad de producción. | `/home/mackroph/.config/opencode/skills/frontend-design/SKILL.md` |
-| `go-testing` | Aplicar patrones de pruebas para Go. | `/home/mackroph/.config/opencode/skills/go-testing/SKILL.md` |
-| `issue-creation` | Crear issues de GitHub con comprobaciones issue-first. | `/home/mackroph/.config/opencode/skills/issue-creation/SKILL.md` |
-| `judgment-day` | Ejecutar una revisión adversarial doble. | `/home/mackroph/.config/opencode/skills/judgment-day/SKILL.md` |
-| `mmx-cli` | Generar contenido multimedia o consultar MiniMax mediante CLI. | `/home/mackroph/.agents/skills/mmx-cli/SKILL.md` |
-| `seo` | Auditar u optimizar SEO técnico y contenido indexable. | `/home/mackroph/.config/opencode/skills/seo/SKILL.md` |
-| `skill-creator` | Crear nuevas skills con contrato LLM-first. | `/home/mackroph/.config/opencode/skills/skill-creator/SKILL.md` |
-| `skill-improver` | Auditar y mejorar skills existentes. | `/home/mackroph/.config/opencode/skills/skill-improver/SKILL.md` |
-| `work-unit-commits` | Planificar commits como unidades revisables. | `/home/mackroph/.config/opencode/skills/work-unit-commits/SKILL.md` |
+| Skill | Activation | Path | Scope |
+| --- | --- | --- | --- |
+| `1-bug-diagnosticar` | [Bug] Diagnosticar bug o regresión de performance — bucle disciplinado: reproducir → minimizar → hipotetizar → instrumentar → arreglar → test de regresión. Disciplined diagnosis loop for hard bugs and performance regressions. Triggers: 'diagnose this', 'debug this', 'broken', 'failing', 'diagnosticar', 'depurar', 'está roto', 'está fallando', 'regresión de performance', 'encuentra el bug'. | `/home/mackroph/.config/opencode/skills/mattpocock/engineering/diagnose/SKILL.md` | user |
+| `1-bug-tdd-pruebas-primero` | [Bug/Tests] TDD con ciclo rojo-verde-refactor — construir features o corregir bugs con tests primero. Test-driven development with red-green-refactor loop. Triggers: 'TDD', 'red-green-refactor', 'test-first', 'rojo-verde-refactor', 'pruebas primero', 'tests primero', 'ciclo TDD', 'desarrollo guiado por pruebas'. | `/home/mackroph/.config/opencode/skills/mattpocock/engineering/tdd/SKILL.md` | user |
+| `2-arq-mejorar-arquitectura` | [Arquitectura] Encontrar oportunidades de refactor profundo — convertir módulos superficiales en módulos profundos para mayor testabilidad. Find deepening opportunities in a codebase, informed by CONTEXT.md and docs/adr/. Triggers: 'improve architecture', 'refactor', 'deepening', 'mejorar arquitectura', 'refactorizar', 'oportunidades de refactor', 'consolidar módulos', 'hacer más testeable'. | `/home/mackroph/.config/opencode/skills/mattpocock/engineering/improve-codebase-architecture/SKILL.md` | user |
+| `5-prod-modo-cavernicola` | [Productividad] Modo cavernícola — comunicación ultra-comprimida (~75% menos tokens), sin relleno ni cortesías, manteniendo precisión técnica total. Ultra-compressed communication mode. Triggers: "caveman mode", "talk like caveman", "less tokens", "be brief", "modo cavernícola", "habla como cavernícola", "menos tokens", "sé breve", "ahorrar tokens", "responde corto". | `/home/mackroph/.config/opencode/skills/mattpocock/productivity/caveman/SKILL.md` | user |
+| `accessibility` | Audit and improve web accessibility following WCAG 2.2 guidelines. Use when asked to "improve accessibility", "a11y audit", "WCAG compliance", "screen reader support", "keyboard navigation", or "make accessible". | `/home/mackroph/.config/opencode/skills/accessibility/SKILL.md` | user |
+| `branch-pr` | Create Gentle AI pull requests with issue-first checks. Trigger: creating, opening, or preparing PRs for review. | `/home/mackroph/.codex/skills/branch-pr/SKILL.md` | user |
+| `chained-pr` | Trigger: PRs over 400 lines, stacked PRs, review slices. Split oversized changes into chained PRs that protect review focus. | `/home/mackroph/.codex/skills/chained-pr/SKILL.md` | user |
+| `comment-writer` | Write warm, direct collaboration comments. Trigger: PR feedback, issue replies, reviews, Slack messages, or GitHub comments. | `/home/mackroph/.codex/skills/comment-writer/SKILL.md` | user |
+| `cognitive-doc-design` | Design docs that reduce cognitive load. Trigger: writing guides, READMEs, RFCs, onboarding, architecture, or review-facing docs. | `/home/mackroph/.codex/skills/cognitive-doc-design/SKILL.md` | user |
+| `frontend-design` | Create distinctive, production-grade frontend interfaces with high design quality. Use this skill when the user asks to build web components, pages, artifacts, posters, or applications. Generates creative, polished code and UI design that avoids generic AI aesthetics. | `/home/mackroph/.config/opencode/skills/frontend-design/SKILL.md` | user |
+| `find-skills` | Helps users discover and install agent skills when they ask questions like "how do I do X", "find a skill for X", "is there a skill that can...", or express interest in extending capabilities. This skill should be used when the user is looking for functionality that might exist as an installable skill. | `/home/mackroph/.agents/skills/find-skills/SKILL.md` | user |
+| `go-testing` | Trigger: Go tests, go test coverage, Bubbletea teatest, golden files. Apply focused Go testing patterns. | `/home/mackroph/.codex/skills/go-testing/SKILL.md` | user |
+| `imagegen` | Generate or edit raster images when the task benefits from AI-created bitmap visuals such as photos, illustrations, textures, sprites, mockups, or transparent-background cutouts. Use when Codex should create a brand-new image, transform an existing image, or derive visual variants from references, and the output should be a bitmap asset rather than repo-native code or vector. | `/home/mackroph/.codex/skills/.system/imagegen/SKILL.md` | user |
+| `issue-creation` | Create Gentle AI issues with issue-first checks. Trigger: creating GitHub issues, bug reports, or feature requests. | `/home/mackroph/.codex/skills/issue-creation/SKILL.md` | user |
+| `judgment-day` | Trigger: judgment day, dual review, adversarial review, juzgar. Run blind dual review, fix confirmed issues, then re-judge. | `/home/mackroph/.codex/skills/judgment-day/SKILL.md` | user |
+| `mmx-cli` | Use mmx to generate text, images, video, speech, and music via the MiniMax AI platform. Use when the user wants to create media content, chat with MiniMax models, perform web search, or manage MiniMax API resources from the terminal. | `/home/mackroph/.agents/skills/mmx-cli/SKILL.md` | user |
+| `openai-docs` | Use when the user asks how to build with OpenAI products or APIs, asks about Codex itself or choosing Codex surfaces, needs up-to-date official documentation with citations, or help choosing the latest model for a use case. | `/home/mackroph/.codex/skills/.system/openai-docs/SKILL.md` | user |
+| `plugin-creator` | Create and scaffold plugin directories for Codex with a required `.codex-plugin/plugin.json`, optional plugin folders/files, and valid manifest defaults. | `/home/mackroph/.codex/skills/.system/plugin-creator/SKILL.md` | user |
+| `seo` | Optimize for search engine visibility and ranking. Use when asked to "improve SEO", "optimize for search", "fix meta tags", "add structured data", "sitemap optimization", or "search engine optimization". | `/home/mackroph/.config/opencode/skills/seo/SKILL.md` | user |
+| `skill-creator` | Trigger: new skills, agent instructions, documenting AI usage patterns. Create LLM-first skills with valid frontmatter. | `/home/mackroph/.codex/skills/.system/skill-creator/SKILL.md` | user |
+| `skill-improver` | Trigger: improve skills, audit skills, refactor skills, skill quality. Audit and upgrade existing LLM-first skills. | `/home/mackroph/.codex/skills/skill-improver/SKILL.md` | user |
+| `skill-installer` | Install Codex skills into `$CODEX_HOME/skills` from a curated list or a GitHub repo path. | `/home/mackroph/.codex/skills/.system/skill-installer/SKILL.md` | user |
+| `speckit-agent-context-update` | Refresh the managed Spec Kit section in the coding agent context file | `/home/mackroph/Dev/Tecnica/inovait/inovait-backend/.agents/skills/speckit-agent-context-update/SKILL.md` | project |
+| `speckit-analyze` | Perform a non-destructive cross-artifact consistency and quality analysis across spec.md, plan.md, and tasks.md after task generation. | `/home/mackroph/Dev/Tecnica/inovait/inovait-backend/.agents/skills/speckit-analyze/SKILL.md` | project |
+| `speckit-checklist` | Generate a custom checklist for the current feature based on user requirements. | `/home/mackroph/Dev/Tecnica/inovait/inovait-backend/.agents/skills/speckit-checklist/SKILL.md` | project |
+| `speckit-clarify` | Identify underspecified areas in the current feature spec by asking up to 5 highly targeted clarification questions and encoding answers back into the spec. | `/home/mackroph/Dev/Tecnica/inovait/inovait-backend/.agents/skills/speckit-clarify/SKILL.md` | project |
+| `speckit-constitution` | Create or update the project constitution from interactive or provided principle inputs, ensuring all dependent templates stay in sync. | `/home/mackroph/Dev/Tecnica/inovait/inovait-backend/.agents/skills/speckit-constitution/SKILL.md` | project |
+| `speckit-implement` | Execute the implementation plan by processing and executing all tasks defined in tasks.md | `/home/mackroph/Dev/Tecnica/inovait/inovait-backend/.agents/skills/speckit-implement/SKILL.md` | project |
+| `speckit-plan` | Execute the implementation planning workflow using the plan template to generate design artifacts. | `/home/mackroph/Dev/Tecnica/inovait/inovait-backend/.agents/skills/speckit-plan/SKILL.md` | project |
+| `speckit-specify` | Create or update the feature specification from a natural language feature description. | `/home/mackroph/Dev/Tecnica/inovait/inovait-backend/.agents/skills/speckit-specify/SKILL.md` | project |
+| `speckit-tasks` | Generate an actionable, dependency-ordered tasks.md for the feature based on available design artifacts. | `/home/mackroph/Dev/Tecnica/inovait/inovait-backend/.agents/skills/speckit-tasks/SKILL.md` | project |
+| `speckit-taskstoissues` | Convert existing tasks into actionable, dependency-ordered GitHub issues for the feature based on available design artifacts. | `/home/mackroph/Dev/Tecnica/inovait/inovait-backend/.agents/skills/speckit-taskstoissues/SKILL.md` | project |
+| `work-unit-commits` | Plan commits as reviewable work units. Trigger: implementation, commit splitting, chained PRs, or keeping tests and docs with code. | `/home/mackroph/.codex/skills/work-unit-commits/SKILL.md` | user |

@@ -1,58 +1,83 @@
-# Guía futura de ejecución y validación
+# Guía de ejecución y validación
 
 ## Propósito
 
-Esta guía describe cómo una persona evaluadora podrá ejecutar y recorrer la solución cuando la implementación exista. Los comandos no fueron ejecutados durante planificación.
+Esta guía ejecuta el scaffold S01 actual y separa claramente los pasos futuros de persistencia y dominio.
 
-## Prerrequisitos futuros
+## Prerrequisitos
 
 - .NET SDK `10.0.109`.
-- Docker compatible para la ruta primaria de integración Testcontainers y SQL Server 2022 accesible para ejecutar el script del evaluador.
-- Cliente HTTP o la aplicación `inovait-frontend` ejecutada desde un origen local permitido.
-- Repositorios `inovait-backend` e `inovait-frontend` clonados por separado.
+- Docker compatible para Testcontainers y SQL Server 2022 serán necesarios desde S02.
+- Cliente HTTP o `inovait-frontend` desde un origen local permitido.
+- Repositorios backend/frontend clonados por separado.
 
-## Variables de entorno
+## Variables locales
 
 ```bash
-export SQLSERVER_HOST="localhost,1433"
-export SQLSERVER_DATABASE="Inovait"
-export SQLSERVER_USER="sa"
-export SQLSERVER_PASSWORD="valor-local-no-versionado"
-export ConnectionStrings__Inovait="Server=${SQLSERVER_HOST};Database=${SQLSERVER_DATABASE};User Id=${SQLSERVER_USER};Password=${SQLSERVER_PASSWORD};TrustServerCertificate=True"
+: "${SQLSERVER_HOST:?Set SQLSERVER_HOST to the test SQL Server endpoint}"
+: "${SQLSERVER_DATABASE:?Set SQLSERVER_DATABASE}"
+: "${SQLSERVER_USER:?Set SQLSERVER_USER through environment or user-secrets}"
+: "${SQLSERVER_PASSWORD:?Set SQLSERVER_PASSWORD through environment or user-secrets}"
+export ConnectionStrings__Inovait="Server=${SQLSERVER_HOST};Database=${SQLSERVER_DATABASE};User Id=${SQLSERVER_USER};Password=${SQLSERVER_PASSWORD};Encrypt=True"
 export Cors__AllowedOrigins__0="http://localhost:4200"
-export ASPNETCORE_ENVIRONMENT="Development"
 ```
 
-Los valores son marcadores locales, no secretos versionables. En Windows se usarán variables equivalentes.
+Son marcadores locales, nunca valores versionables.
 
-## Evidencia contractual de planificación
+## Estado contractual y entrega
 
-Los diez YAML están versionados en el baseline `1223630ab99bf1bfaa4f5919fccf5ff539379c8e` con checksum combinado `802c13b91bf5c6425d24c540b6841a2abe134e084ea310fc2b7041e32c24a81a`. Antes de consumir el contrato se debe comprobar que el checkout esté clean y coincida con ese baseline; el consumidor frontend debe fallar ante archivos no versionados, cambios locales o un checksum distinto. La estrategia de revisión o `size:exception` continúa pendiente y bloquea apply por separado.
+El bundle OpenAPI permanece sin cambios: baseline `1223630ab99bf1bfaa4f5919fccf5ff539379c8e`, checksum `802c13b91bf5c6425d24c540b6841a2abe134e084ea310fc2b7041e32c24a81a`. La prueba primaria es igualdad del árbol contractual y ausencia de archivos untracked; el checksum es evidencia secundaria. La estrategia está resuelta como `stacked-to-main`, con gate pre-merge ≤400 líneas humanas por slice y salida generada aislada. `EX-PLAN-2026-07-10` cubre solo el work unit separado de planificación documental ya aprobado; no cubre S01 ni su registro posterior de evidencia.
 
-## Ruta crítica P0 asistida por IA — ocho horas
+Desde la raíz backend, la igualdad primaria se comprueba con:
 
-**Pronóstico**: alto riesgo. Esta secuencia vuelve operativo el intento de una jornada, pero no garantiza el resultado. Supone planificación y puertas pre-apply aprobadas antes de iniciar el reloj; SDK .NET, Node y Docker listos; una sola persona operadora usando Codex/CLI; y P1 completamente excluido.
+```bash
+git diff --exit-code 1223630ab99bf1bfaa4f5919fccf5ff539379c8e -- specs/001-school-enrollment-management/contracts
+test -z "$(git status --porcelain --untracked-files=all -- specs/001-school-enrollment-management/contracts)"
+```
 
-| Reloj | Timebox | Checklist agrupado | Salida obligatoria |
-| --- | ---: | --- | --- |
-| 00:00–00:45 | 45 min | T001–T009 — baseline y scaffold | baseline verificado/registrado, estrategia de revisión resuelta y solución base verde |
-| 00:45–02:15 | 90 min | T010–T026 — persistencia y catálogos | 8 tablas P0, migración/seeds, host y cinco catálogos sobre SQL Server |
-| 02:15–03:15 | 60 min | T027–T032 — inscripción | alta/reutilización, conflictos y atomicidad verdes |
-| 03:15–03:50 | 35 min | T033–T036 — consulta | filtros conjuntos, vacío válido, edad y orden verdes |
-| 03:50–04:55 | 65 min | T037–T042 — contratos | creación multiescuela, lista, atomicidad y solapamiento verdes |
-| 04:55–07:00 | 125 min | T043–T048 — SQL, pruebas y documentación mínima | `database/setup.sql`, paridad, contrato/errores, runner, README y guía del evaluador listos |
-| 07:00–08:00 | 60 min | T049–T051 — puerta y handoff frontend | gate P0 ejecutado, evidencia fechada y handoff separado |
+Solo después, desde `specs/001-school-enrollment-management/contracts/`, el checksum se reproduce con este orden exacto:
 
-Los rangos agrupan checklist fino y trabajo asistido; no convierten cada tarea en una hora ni autorizan omitir sus criterios.
+```bash
+sha256sum openapi.yaml \
+  paths/catalogs.yaml paths/enrollments.yaml \
+  paths/teacher-contracts.yaml paths/reports.yaml \
+  components/catalogs.yaml components/enrollments.yaml \
+  components/teacher-contracts.yaml components/reports.yaml \
+  components/problems.yaml | sha256sum
+```
 
-### Cortes obligatorios
+La salida esperada es `802c13b91bf5c6425d24c540b6841a2abe134e084ea310fc2b7041e32c24a81a  -`.
 
-- **Mitad de jornada (04:00)**: T001–T036 deben estar verdes y el slice de contratos debe haber comenzado. Si no, se detiene el compromiso temporal y se registra el desvío; no se rebautiza un P0 incompleto como entrega de una jornada.
-- **Antes de la última hora (07:00)**: toda conducta backend P0, el script SQL y las pruebas críticas de integridad deben existir y pasar de forma enfocada. Si no, no se emite handoff “listo”; la hora final se usa para corregir o documentar el bloqueo y el objetivo diario queda incumplido.
+## Ruta crítica P0
 
-Ante desvíos solo se corta hardening no esencial, como observación de latencia, refactor cosmético o pruebas redundantes sin riesgo nuevo. Nunca se corta un entregable original requerido, `database/setup.sql` ni una prueba crítica de atomicidad, unicidad, FK compuesto, solapamiento o paridad SQL.
+El pronóstico de una jornada sigue siendo de riesgo alto. El refactor eleva P0 de 8 a 11 tablas y NO autoriza recortar integridad, `database/setup.sql` ni pruebas críticas.
 
-## Preparar el backend
+| Orden | Slices/tareas | Salida obligatoria |
+| --- | --- | --- |
+| 1 | S01–S02 / V2-T005–V2-T019 | solución base, fixture SQL, normalización y harness genérico de auditoría/concurrencia; sin evidencia de tablas futuras |
+| 2 | S03–S04 / V2-T020–V2-T031 | cinco tablas de catálogo con evidencia parcial ejecutable; luego Person con roles duales |
+| 3 | S05–S07 / V2-T032–V2-T046 | Enrollment, contratos y migración P0 aislada; tras V2-T045, evidencia completa de 11 tablas, triggers, singleton y permisos |
+| 4 | S08–S11 / V2-T047–V2-T067 | host, catálogos y US1–US3 end-to-end |
+| 5 | S12 / V2-T068–V2-T075 | setup SQL, paridad, runner, walkthroughs y puerta P0 |
+
+P1 solo puede iniciar en V2-T076 después de PASS en V2-T075. Agrega `catalog.Subject`, `academic.TeachingAssignment` y `academic.ClassSchedule`, elevando el total a 14 tablas; `listSubjects` se implementa y prueba explícitamente en V2-T084–V2-T087 antes de los reportes.
+
+## Primer slice autónomo
+
+S01 ya contiene tres proyectos de producción, dos de pruebas y smoke runner HTTP, sin entidades ni migraciones. El scaffold generado se revisa separado de la configuración humana mediante `docs/generated-manifests/s01.txt`. Su rollback elimina solo la solución creada.
+
+## Ejecutar el scaffold S01
+
+```bash
+dotnet restore
+dotnet build --no-restore --configuration Debug
+dotnet test --no-build --no-restore --configuration Debug
+dotnet run --project src/Inovait.Api
+```
+
+`GET /` devuelve `{"service":"Inovait API","status":"ready"}` y `GET /health` devuelve `{"status":"ok"}`, ambos como `application/json`.
+
+## Preparar persistencia desde S02
 
 Ruta EF futura:
 
@@ -63,48 +88,61 @@ dotnet ef database update --project src/Inovait.Infrastructure --startup-project
 dotnet run --project src/Inovait.Api
 ```
 
-Ruta de script para evaluación limpia:
+Ruta de script sobre base vacía:
 
 ```bash
 sqlcmd -S "$SQLSERVER_HOST" -d "$SQLSERVER_DATABASE" -U "$SQLSERVER_USER" -P "$SQLSERVER_PASSWORD" -i database/setup.sql
 dotnet run --project src/Inovait.Api
 ```
 
-`database/setup.sql` se implementará antes de la puerta P0. Su primera versión crea las 8 tablas y seeds mínimos de P0; P1 podrá ampliarla a 11 tablas después de la puerta. No existe en esta fase.
+`database/setup.sql` futuro crea schemas, 11 tablas P0, constraints, índices/includes, triggers estrechos, seeds, singleton y permisos runtime; no crea database/login ni contiene credenciales. P1 agrega solo tres tablas y objetos asociados.
 
-## Ejecutar pruebas futuras
+## Ejecutar pruebas P0 futuras
 
 ```bash
 ./scripts/run-p0-tests.sh
+# Solo después del PASS P0 y de completar V2-T076–V2-T100:
+./scripts/run-p1-tests.sh
 ```
 
-El script futuro primero listará las pruebas con `Priority=P0`, fallará si descubre menos de 12 casos y luego ejecutará exactamente ese filtro. Todas las pruebas P0 declararán `[Trait("Priority", "P0")]`. Testcontainers es la ruta primaria obligatoria de integración; una conexión externa puede documentarse como fallback aislado, nunca como segunda puerta ni contra una base compartida/productiva.
+Cada runner lista su prioridad y aplica fail-on-missing al manifest canónico de [testing-strategy.md](../../docs/testing-strategy.md) antes de ejecutar. V2-T071 rechaza IDs repetidos en el manifest y exige para cada uno de los 37 IDs P0 al menos una prueba descubierta con `Priority=P0&Evidence=<ID>`; solo después ejecuta toda la suite `Priority=P0`. El piso de 20 casos es secundario. P0 solo consume evidencia producida hasta V2-T070 y P1 solo consume evidencia producida hasta V2-T100. Testcontainers es la ruta relacional primaria. La paridad compara metadatos de dos bases limpias: migración EF y setup SQL.
+
+El orden de evidencia es estricto: S02 prueba únicamente el interceptor/harness genérico; S03 ejecuta `IT-CATALOG-SCHEMA-S03`, `IT-CATALOG-MUTABILITY-S03` e `IT-CATALOG-SINGLETON-S03` solo contra sus cinco tablas. V2-T046, siempre después de V2-T045, produce y ejecuta `IT-SCHEMAS-P0`, `IT-IMMUTABILITY`, `IT-SINGLETON`, `IT-REFERENCE-PERMISSIONS`, `IT-AUDIT-UTC-P0` e `IT-ROWVERSION-P0` cuando ya existen las 11 tablas, triggers, rol y permisos. Los productores API son V2-T047 (`IT-CATALOGS`), V2-T052 (`IT-ENR-CREATE`, `IT-ENR-IDENTITY`, `IT-ENR-CONTEXT`), V2-T053 (`IT-ENR-ATOMIC`), V2-T058 (`IT-ENR-FILTER`) y V2-T062 (`IT-CON-MULTI`, `IT-CON-DATES`, `IT-CON-LIST`, `IT-PROBLEMS`, `IT-OPENAPI-P0`). V2-T069 produce setup/seed y V2-T070 produce una sola vez `IT-INDEXES-P0`; todos preceden al consumer V2-T071. V2-T083 produce `IT-SEED-P1` tras materializar 14 tablas y V2-T087 produce la matriz auditada P1.
+
+## Checklist relacional P0
+
+1. Existen `catalog`, `people`, `academic`, `staff`; `AcademicYear` solo está en `catalog`.
+2. Existen 11 tablas P0 y `AcademicConfiguration(Id=1)` referencia un año válido.
+3. La aplicación aplica NFC/trim/whitespace Unicode, incluidos tabs/newlines; SQL directo con `LEN(TRIM)>0` rechaza vacío y solo espacios ordinarios, sin sobrestimar su cobertura.
+4. Una `Person` puede ser `Student` y `Teacher` sin duplicar identidad.
+5. Exactamente `School`, `AcademicYear`, `Grade`, `ClassGroup`, `Person`, `Teacher`, `TeacherContract` tienen auditoría/check/rowversion; `Enrollment` solo `CreatedAtUtc`; `DocumentType`, `Student` y `AcademicConfiguration` no tienen auditoría genérica, check cronológico ni rowversion.
+6. EF y SQL directo rechazan cambios de códigos estables/sector.
+7. Cancelación exige sus tres datos; Enrollment conserva FK compuesto y unicidad anual.
+8. Los índices tienen nombres, key order e includes definidos en `data-model.md`; `Id` no se repite en INCLUDE mientras la PK permanezca clustered.
+9. El principal runtime puede leer `DocumentType`, pero INSERT/UPDATE/DELETE fallan y migration/setup tienen permisos equivalentes.
 
 ## Walkthrough P0
 
-1. `GET /api/schools`, `/api/grades`, `/api/academic-years` y `/api/class-groups` para obtener referencias ficticias.
-2. `POST /api/enrollments` con un documento nuevo; esperar 201 y un único `Student`/`Enrollment`.
-3. Repetir la identidad en otro año; esperar reutilización. Repetir en el mismo año; esperar 409 sin cambios.
-4. `GET /api/enrollments?schoolId=...&gradeId=...&academicYearId=...&asOfDate=...`; verificar filtros conjuntos, edad y orden.
-   Una combinación de IDs existentes sin grupos debe devolver `200 []`, no `422`.
-5. `GET /api/teachers`, elegir un docente y ejecutar `POST /api/teachers/{teacherId}/contracts` con dos escuelas; esperar dos contratos o ninguno.
-6. `GET /api/teachers/{teacherId}/contracts` y `GET /api/schools/{schoolId}/teachers`; verificar registros independientes y estados persistido/efectivo.
-
-P1 no forma parte del compromiso de una jornada y solo puede iniciarse después de completar estos pasos, el runner P0, la paridad de `database/setup.sql` y la evidencia en `docs/evaluator-execution.md`.
+1. Consultar escuelas, grados, años, grupos y docentes ficticios.
+2. Crear una inscripción con identidad nueva; esperar `Person`+`Student`+`Enrollment` atómicos.
+3. Repetir la identidad en otro año; esperar reutilización. Repetir el año; esperar 409.
+4. Consultar inscripciones por escuela/grado/año y verificar edad/orden; contexto existente sin grupos devuelve `200 []`.
+5. Crear contratos para dos escuelas; esperar dos registros o ninguno.
+6. Consultar por docente/escuela y verificar estado persistido/efectivo.
 
 ## Walkthrough P1 condicional
 
-1. `GET /api/reports/age-distribution` y verificar edades 2/3/7/8/12/13.
-2. `GET /api/reports/teacher-counts-by-sector` y verificar docentes distintos, incluido uno en ambos sectores.
-3. `GET /api/reports/top-schools` y verificar que se devuelvan todas las escuelas empatadas.
-4. `GET /api/students/{documentType}/{documentNumber}/history` y verificar años, docentes y materias múltiples.
+Antes del walkthrough, con las 14 tablas ya materializadas, `IT-AUDIT-UTC-P1`/`IT-ROWVERSION-P1` comprueban auditoría/check/rowversion en `Subject` y `TeachingAssignment`, y solo `CreatedAtUtc` en `ClassSchedule`.
 
-Las solicitudes y respuestas concretas están en [OpenAPI](./contracts/openapi.yaml); el modelo está en [data-model.md](./data-model.md).
+1. Consultar `listSubjects` y verificar orden `name, code, id`.
+2. Distribución 2/3/7/8/12/13.
+3. Docentes distintos por sector, excluyendo cancelaciones según período.
+4. Todas las escuelas empatadas en el máximo.
+5. Historia anual con múltiples docentes/materias y períodos de asignación compatibles.
 
 ## Resultado esperado
 
-- Sin autenticación (`security: []`).
-- JSON camelCase y errores RFC 7807.
-- Datos ficticios únicamente.
-- Consultas repetidas devuelven contenido y orden idénticos.
-- Ninguna operación inválida deja persistencia parcial.
+- JSON/OpenAPI sin cambios observables; `DocumentTypeId` no se expone.
+- Solo datos ficticios, cero secretos y errores `ProblemDetails`.
+- Cero persistencia parcial y órdenes deterministas.
+- Paridad de 11 tablas en P0 y 14 únicamente después de la puerta P1.

@@ -1,147 +1,164 @@
-# Modelo entidad-relación
+# Modelo entidad-relación de producción
 
-## Vista general
+## Vista canónica
 
-La fuente detallada de campos y tipos es [data-model.md](../specs/001-school-enrollment-management/data-model.md). Este documento presenta cardinalidades, integridad, normalización y cómo el modelo responde las preguntas municipales.
+La definición completa de columnas, constraints e índices está en [data-model.md](../specs/001-school-enrollment-management/data-model.md). `AcademicYear` pertenece a `catalog`; no existe `academic.AcademicYear`.
 
 ```mermaid
 erDiagram
+    DOCUMENT_TYPE ||--o{ PERSON : classifies
+    PERSON ||--o| STUDENT : may_hold
+    PERSON ||--o| TEACHER : may_hold
+    ACADEMIC_YEAR ||--|| ACADEMIC_CONFIGURATION : selected_by
     SCHOOL ||--o{ CLASS_GROUP : organizes
-    SCHOOL ||--o{ TEACHER_CONTRACT : signs
     ACADEMIC_YEAR ||--o{ CLASS_GROUP : contains
     GRADE ||--o{ CLASS_GROUP : classifies
     STUDENT ||--o{ ENROLLMENT : has
     CLASS_GROUP ||--o{ ENROLLMENT : receives
     TEACHER ||--o{ TEACHER_CONTRACT : holds
+    SCHOOL ||--o{ TEACHER_CONTRACT : signs
     TEACHER_CONTRACT ||--o{ TEACHING_ASSIGNMENT : authorizes
     CLASS_GROUP ||--o{ TEACHING_ASSIGNMENT : receives
     SUBJECT ||--o{ TEACHING_ASSIGNMENT : defines
     TEACHING_ASSIGNMENT ||--|{ CLASS_SCHEDULE : occurs_on
 
+    DOCUMENT_TYPE {
+        smallint Id PK
+        varchar Code UK
+        nvarchar Name
+        bit IsActive
+    }
+    PERSON {
+        int Id PK
+        smallint DocumentTypeId FK
+        nvarchar DocumentNumber UK
+        nvarchar FirstNames
+        nvarchar LastNames
+        date BirthDate
+        rowversion RowVersion
+    }
+    STUDENT {
+        int PersonId PK,FK
+    }
+    TEACHER {
+        int PersonId PK,FK
+        rowversion RowVersion
+    }
     SCHOOL {
         int Id PK
+        varchar Code UK
         nvarchar Name UK
         varchar Sector
+        rowversion RowVersion
     }
     ACADEMIC_YEAR {
         int Id PK
+        varchar Code UK
         nvarchar Name UK
         date StartDate
         date EndDate
-        bit IsCurrent
+        rowversion RowVersion
+    }
+    ACADEMIC_CONFIGURATION {
+        tinyint Id PK
+        int CurrentAcademicYearId FK
     }
     GRADE {
         int Id PK
+        varchar Code UK
         nvarchar Name UK
         smallint SortOrder UK
+        rowversion RowVersion
+    }
+    SUBJECT {
+        int Id PK
+        varchar Code UK
+        nvarchar Name UK
+        rowversion RowVersion
     }
     CLASS_GROUP {
         int Id PK
         int SchoolId FK
         int AcademicYearId FK
         int GradeId FK
-        nvarchar Code
-    }
-    STUDENT {
-        int Id PK
-        nvarchar NormalizedDocumentType UK
-        nvarchar NormalizedDocumentNumber UK
-        nvarchar FirstNames
-        nvarchar LastNames
-        date BirthDate
+        varchar Code
+        rowversion RowVersion
     }
     ENROLLMENT {
         int Id PK
-        int StudentId FK
+        int StudentPersonId FK
         int ClassGroupId FK
         int AcademicYearId FK
-    }
-    TEACHER {
-        int Id PK
-        nvarchar NormalizedDocumentType UK
-        nvarchar NormalizedDocumentNumber UK
-        nvarchar FirstNames
-        nvarchar LastNames
+        datetime2 CreatedAtUtc
     }
     TEACHER_CONTRACT {
         int Id PK
-        int TeacherId FK
+        int TeacherPersonId FK
         int SchoolId FK
         date StartDate
         date EndDate
         varchar Status
-    }
-    SUBJECT {
-        int Id PK
-        nvarchar Code UK
-        nvarchar Name UK
+        datetime2 CancelledAtUtc
+        nvarchar CancellationReason
+        date CancellationEffectiveDate
+        rowversion RowVersion
     }
     TEACHING_ASSIGNMENT {
         int Id PK
         int TeacherContractId FK
         int ClassGroupId FK
         int SubjectId FK
+        date StartDate
+        date EndDate
+        rowversion RowVersion
     }
     CLASS_SCHEDULE {
         int TeachingAssignmentId PK,FK
         tinyint Weekday PK
+        datetime2 CreatedAtUtc
     }
 ```
 
-## Entidades y cardinalidades
+`School`, `AcademicYear`, `Grade`, `ClassGroup`, `Person`, `Teacher`, `TeacherContract`, `Subject` y `TeachingAssignment` incluyen además `CreatedAtUtc` y `UpdatedAtUtc`; el diagrama omite esos campos repetidos para reducir carga visual. `Enrollment` y `ClassSchedule` solo incluyen `CreatedAtUtc`; `DocumentType`, `Student` y `AcademicConfiguration` no reciben auditoría genérica ni rowversion.
 
-El diagrama representa el dominio completo. La entrega P0 materializa primero School, AcademicYear, Grade, ClassGroup, Student, Enrollment, Teacher y TeacherContract; P1 condicional agrega Subject, TeachingAssignment y ClassSchedule. No se incorpora una tabla de oferta académica: la inexistencia de ClassGroup para referencias de catálogo existentes significa contexto válido sin grupos.
+## Cardinalidades e historia
 
-| Entidad | Propósito | Cardinalidad histórica |
-| --- | --- | --- |
-| `School` | catálogo de escuelas con sector cerrado | una escuela tiene grupos y contratos |
-| `AcademicYear` | catálogo con límites y año actual | un año contiene muchos grupos; nunca es entero libre |
-| `Grade` | nivel ordenado | un grado participa en grupos de varios años/escuelas |
-| `ClassGroup` | contexto school+year+grade+code | recibe inscripciones y asignaciones |
-| `Student` | identidad documental canónica | tiene cero o muchas inscripciones, máximo una por año |
-| `Enrollment` | hecho anual histórico | pertenece a un estudiante y un grupo |
-| `Teacher` | identidad docente precargada | tiene cero o muchos contratos |
-| `TeacherContract` | relación temporal docente-escuela | autoriza cero o muchas asignaciones |
-| `Subject` | catálogo de materias | participa en muchas asignaciones |
-| `TeachingAssignment` | contrato que sirve materia a grupo | tiene uno o más weekdays |
-| `ClassSchedule` | weekday atómico, sin horas | pertenece exactamente a una asignación |
+| Relación | Garantía |
+| --- | --- |
+| `Person`–`Student` / `Person`–`Teacher` | PK=FK uno-a-uno independiente; una persona puede tener ambos roles |
+| `Student`–`Enrollment` | cero o muchas inscripciones; máximo una por `AcademicYear` |
+| `ClassGroup`–`Enrollment` | FK compuesto grupo+año evita divergencia |
+| `Teacher`–`TeacherContract`–`School` | contratos históricos independientes por escuela |
+| `TeachingAssignment` | contrato, grupo, materia y período propio; compatibilidad escolar/temporal transaccional |
+| `ClassSchedule` | uno o más weekdays atómicos por asignación |
+
+P0 materializa 11 tablas: todas excepto `Subject`, `TeachingAssignment` y `ClassSchedule`. P1 agrega esas tres sin reestructurar P0.
 
 ## Integridad SQL
 
-| Área | Restricciones principales |
+| Área | Defensa principal |
 | --- | --- |
-| Identidad | UNIQUE normalized document type+number en `Student` y `Teacher` |
-| Contexto académico | UNIQUE school+year+grade+code; AK group id+year; FK compuesto Enrollment(group,year) |
-| Inscripción | UNIQUE student+year; no duplica school ni grade |
-| Año | CHECK end>=start; UNIQUE filtrado de `IsCurrent=1` |
-| Escuela | CHECK `Sector IN ('Public','Private')` |
-| Contrato | CHECK end null/end>=start; CHECK status; índice UNIQUE sin filtro sobre teacher+school+start+end |
-| Asignación | UNIQUE contract+group+subject; FK a cada padre |
-| Horario | PK assignment+weekday; CHECK 1..7 |
+| Identidad | `UQ_Person_DocumentTypeId_DocumentNumber` con `Latin1_General_100_CI_AS`; no hay columnas duplicadas de comparación |
+| Año actual/referencias | singleton `AcademicConfiguration(Id=1)`, seed, permisos restringidos y `TR_AcademicConfiguration_PreventDelete`; `DocumentType` con SELECT y DENY runtime de INSERT/UPDATE/DELETE |
+| Contexto anual | `UQ_ClassGroup_Id_AcademicYear_ForEnrollment` + FK compuesto de `Enrollment` |
+| Historia anual | `UQ_Enrollment_StudentPersonId_AcademicYearId`; sin `SchoolId`/`GradeId` duplicados |
+| Códigos/sector | save behavior EF y triggers estrechos; un `CHECK` no pretende detectar cambios entre versiones |
+| Auditoría | defaults UTC, interceptor de `UpdatedAtUtc`, checks cronológicos y `rowversion` |
+| Cancelación | los tres datos requeridos en `Cancelled` y nulos en `Confirmed` |
+| Períodos | checks locales; compatibilidad entre tablas en aplicación dentro de transacción |
+| Borrado | todas las FK `NO ACTION`; no existe soft delete genérico |
 
-Índices de consulta: grupos por year/grade/school; estudiantes por apellido/nombre; enrollments por group; contratos por teacher/school/dates y school/status/dates; assignments por group/subject. Las claves FK no cubiertas reciben índice. Todos los deletes son `NO ACTION`: School, Student, año, grupo, contrato, asignación o materia no pueden eliminar historia referenciada.
+## Accesos físicos
 
-## Reglas que requieren aplicación
+- Inscripciones: seek `ClassGroupId, StudentPersonId` con `AcademicYearId,CreatedAtUtc` incluidos; unicidad anual por estudiante+año.
+- Contratos: índices separados por `TeacherPersonId, StartDate, EndDate` y `SchoolId, StartDate, EndDate`, cubriendo listas y reporte de sector sin un tercer índice filtrado redundante.
+- Asignaciones: índices cubrientes por `ClassGroupId`/período y `TeacherContractId`/período, con `SubjectId` incluido.
+- FK no lideradas por estos índices reciben soporte mínimo; PK/UNIQUE ya existentes no se duplican.
 
-- Comparar identidad normalizada y datos personales equivalentes.
-- Rechazar fecha de nacimiento futura.
-- Validar school/grade/year solicitados contra el `ClassGroup`; el FK compuesto cubre year, mientras school y grade se comparan al cargar el grupo.
-- Detectar cualquier superposición inclusiva para teacher+school dentro de transacción `Serializable`. SQL `CHECK` no compara filas; no se usa trigger por opacidad y costo.
-- Validar que `TeacherContract.SchoolId` coincida con `ClassGroup.SchoolId` y que contrato/año se intersecten al menos un día.
-- Exigir uno o más weekdays antes de confirmar una asignación; SQL valida cada weekday pero no existencia de hijos sin trigger.
+Los índices nonclustered no declaran `Id` en INCLUDE: la PK clustered predeterminada ya lo aporta. Si cambia el clustering de una PK, el diseño y `IT-INDEXES-P0/P1` deben re-evaluar la cobertura.
 
 ## Normalización
 
-Todas las tablas cumplen 3NF. Catálogos, identidades, contratos, asignaciones y horarios alcanzan BCNF con las claves declaradas. `Enrollment` llega a 3NF pero no BCNF por `ClassGroupId → AcademicYearId`: year es atributo primo de `(StudentId, AcademicYearId)`. La redundancia permite UNIQUE anual y el FK compuesto impide divergencia. Es preferible a duplicar school/grade o confiar solo en una validación concurrente de aplicación.
+Todas las tablas cumplen 3NF. Los catálogos, configuración, persona, roles, grupo, contrato, asignación y horario alcanzan BCNF. `Enrollment` conserva `AcademicYearId` y queda en 3NF, no BCNF, por `ClassGroupId → AcademicYearId`; el atributo es primo en la clave candidata `(StudentPersonId, AcademicYearId)` y el FK compuesto impide divergencia. Esta dependencia es necesaria para unicidad anual concurrente sin trigger entre tablas.
 
-No hay agregados almacenados. Sector se representa como string enum+CHECK, no lookup, por ser un conjunto cerrado sin metadata o mantenimiento. El estado contractual persistido `Confirmed|Cancelled` no sustituye la vigencia calculada.
-
-## Respuesta a las preguntas de negocio
-
-1. **BQ-001**: filtrar `Enrollment` por año/contexto, calcular edad de `Student.BirthDate` a `asOfDate` y contar 3..7.
-2. **BQ-002**: la misma población agrupa 3..7, 8..12 y >12; menores de 3 se excluyen.
-3. **BQ-003**: unir contratos `Confirmed` temporalmente pertinentes con School y contar `DISTINCT TeacherId` por `Sector`; un docente puede contar una vez en cada sector.
-4. **BQ-004**: unir Enrollment→ClassGroup→School, agrupar por escuela/año, obtener máximo y devolver todas las escuelas cuyo conteo lo iguale.
-5. **BQ-005**: localizar Student por documento normalizado, recorrer Enrollment→ClassGroup→TeachingAssignment→TeacherContract/Teacher/Subject y preservar años y multiplicidad.
-
-Las cinco respuestas se derivan de hechos históricos; ninguna depende de contadores, “escuela actual” o “contrato actual” persistidos.
+No hay agregados de reportes ni segunda fuente de escuela/grado. Los reportes derivan desde hechos históricos y roles comparten una única identidad `Person`.

@@ -1,34 +1,34 @@
 # Capacidades de pruebas
 
-**Modo Strict TDD**: deshabilitado temporalmente
-**Detectado**: 2026-07-10
+**Modo Strict TDD**: habilitado para tareas de comportamiento posteriores a S01
+**Detectado**: 2026-07-11
 
-No existe un proyecto ejecutable ni un test runner configurado. La mención de xUnit en `README.md` es una intención de planificación y no una capacidad disponible. El modo `Strict TDD` debe reevaluarse cuando una fase autorizada incorpore infraestructura de pruebas.
+Existen proyectos ejecutables de pruebas unitarias e integración. El runner xUnit v3 se ejecuta con `dotnet test`; los smoke tests HTTP usan `WebApplicationFactory<Program>`.
 
 ## Test runner
 
-- Comando: no disponible.
-- Framework: no configurado.
+- Comando: `dotnet test --configuration Debug` (repetir con `Release` en verificación).
+- Framework: xUnit v3 `3.2.2`, `Microsoft.NET.Test.Sdk` `18.0.1`, runner Visual Studio `3.1.5`.
 
 ## Capas de pruebas
 
 | Capa | Disponible | Herramienta |
 | --- | --- | --- |
-| Unit | No | — |
-| Integration | No | — |
+| Unit | Sí | xUnit v3 |
+| Integration | Sí | xUnit v3 + `Microsoft.AspNetCore.Mvc.Testing` |
 | E2E | No | — |
 
 ## Cobertura
 
-- Disponible: no.
-- Comando: no disponible.
+- Disponible: sí, mediante `coverlet.collector`.
+- Comando: `dotnet test --collect:"XPlat Code Coverage"`.
 
 ## Herramientas de calidad
 
 | Herramienta | Disponible en el repositorio | Comando |
 | --- | --- | --- |
-| Linter | No | — |
-| Type checker | No | — |
-| Formatter | No | — |
+| Analyzers/compiler | Sí | `dotnet build --configuration Debug` |
+| Nullable/type checking | Sí | compilador C# con nullable y warnings-as-errors |
+| Formatter | Sí | `dotnet format --verify-no-changes --no-restore` |
 
-La disponibilidad de los SDK de .NET `8.0.128` y `10.0.109` no implica que alguna de estas capacidades esté configurada para el repositorio.
+La puerta completa repite build y test en Debug/Release, escanea paquetes vulnerables y ejecuta `git diff --check`.

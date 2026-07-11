@@ -26,7 +26,7 @@ Microsoft clasifica .NET 10 como LTS en soporte activo hasta 2028-11-14; .NET 8 
 
 ### Plataforma y versiones
 
-**Decisión**: SDK `10.0.109`, TFM `net10.0`, C# 14, ASP.NET Core/runtime `10.0.9`, `Microsoft.AspNetCore.OpenApi` `10.0.9` y EF Core SQL Server `10.0.9`.
+**Decisión**: SDK `10.0.109`, TFM `net10.0`, C# 14, ASP.NET Core/runtime `10.0.9` y EF Core SQL Server `10.0.9`. La generación OpenAPI runtime queda diferida: `Microsoft.AspNetCore.OpenApi` `10.0.9` se retiró de S01 por su dependencia transitiva vulnerable.
 
 **Fundamento**: son versiones estables instaladas y el último parche disponible del canal 10.0 al consultar las fuentes; mantienen framework y paquetes Microsoft en el mismo parche. .NET 10 conserva más de dos años de soporte activo para una entrega nueva.
 
@@ -56,13 +56,45 @@ Microsoft clasifica .NET 10 como LTS en soporte activo hasta 2028-11-14; .NET 8 
 
 **Alternativas consideradas**: trigger de superposición rechazado por lógica oculta, dificultad de mapear `ProblemDetails` y duplicación con aplicación. Stored procedures y CQRS se descartan por alcance.
 
-### SQL Server y modelado temporal
+### SQL Server, schemas y modelado temporal
 
-**Decisión**: SQL Server 2022, EF Core SQL Server 10.0.9, `DateOnly`/`date`, sin agregados persistidos. `AcademicYear` es tabla. `SchoolSector` y `TeacherContractStatus` son enums de cadena cerrados con `CHECK` SQL y enums OpenAPI.
+**Decisión**: SQL Server 2022, EF Core SQL Server 10.0.9 y cuatro schemas: `catalog`, `people`, `academic` y `staff`. `AcademicYear` pertenece a `catalog`. Las fechas de negocio usan `DateOnly`/`date`; sellos técnicos usan UTC `datetime2(3)` y concurrencia `rowversion`. No hay agregados persistidos. `SchoolSector` y `TeacherContractStatus` son enums de cadena cerrados con `CHECK` SQL y enums OpenAPI.
 
-**Fundamento**: EF 10 soporta SQL Server 2019 en adelante y mejora traducciones `DateOnly`. Una tabla `AcademicYear` permite nombre, límites, FK y un único año actual; un entero libre no cumple REQ-046. Cadenas `Public|Private` y `Confirmed|Cancelled` son legibles y coherentes entre dominio, API y SQL sin catálogos administrables.
+**Fundamento**: EF 10 soporta SQL Server 2019 en adelante y mejora traducciones `DateOnly`. Los schemas expresan límites del dominio sin separar bases. Una tabla `AcademicYear` permite código, límites y FK; `AcademicConfiguration(Id=1)` selecciona el año actual sin un flag distribuido. `rowversion` hace que EF incluya la versión original en el `WHERE` de cada update.
 
-**Alternativas consideradas**: entero para año y tablas lookup se rechazan por reglas o complejidad. `bit IsPublic` es compacto pero menos expresivo. Timestamps técnicos se omiten porque ninguna capacidad los necesita.
+**Alternativas consideradas**: `academic.AcademicYear` se rechaza por contradecir el mapa autoritativo de catálogos. Un entero para año, `IsCurrent` y `bit IsPublic` se rechazan por semántica o expresividad. Una base por módulo y tablas de auditoría separadas exceden el alcance.
+
+### Identidad personal y normalización de texto
+
+**Decisión**: `people.Person` concentra documento, nombres y nacimiento; `Student` y `Teacher` son roles PK+FK independientes. La aplicación normaliza texto requerido a NFC, recorta y colapsa whitespace Unicode —incluidos tabs/newlines— y rechaza el resultado vacío. SQL usa `Latin1_General_100_CI_AS`, `CHECK LEN(TRIM([Column])) > 0` y `UNIQUE(DocumentTypeId, DocumentNumber)`. El CHECK directo rechaza vacío y solo espacios U+0020, no se presenta como cobertura general de whitespace Unicode. No se diseñan columnas duplicadas de comparación.
+
+**Fundamento**: una persona puede ejercer ambos roles sin duplicar identidad. NFC produce representación Unicode estable; CI_AS resuelve mayúsculas pero conserva distinción de acentos. La unicidad SQL mantiene la defensa concurrente.
+
+**Alternativas consideradas**: duplicar identidad por rol y almacenar copias para comparación producen anomalías de actualización. Una collation accent-insensitive confundiría nombres/documentos con diacríticos. Eliminar puntuación del documento alteraría contenido válido y no forma parte de la regla aprobada.
+
+### Singleton del año actual
+
+**Decisión**: `catalog.AcademicConfiguration` usa `Id tinyint CHECK (Id=1)`, FK al año actual, seed obligatorio, permisos runtime sin insert/delete y trigger estrecho contra delete. La aplicación falla al iniciar si falta la fila.
+
+**Fundamento**: PK+CHECK prueban como máximo una fila, no existencia. Seed+permisos+prevención de delete mantienen exactamente una durante operación normal sin atribuir al `CHECK` una garantía imposible.
+
+**Alternativas consideradas**: `AcademicYear.IsCurrent` requiere índice filtrado y distribuye configuración; un CHECK no puede exigir que exista una fila; un servicio externo de configuración agrega infraestructura innecesaria.
+
+### Inmutabilidad y triggers
+
+**Decisión**: códigos de `School`, `AcademicYear`, `Grade`, `Subject` y `School.Sector` se protegen en EF con acceso restringido y `PropertySaveBehavior.Throw`, y en SQL con cuatro triggers de update estrechos; School combina código y sector. Un quinto trigger solo impide delete del singleton.
+
+**Fundamento**: un `CHECK` valida el valor actual, pero no puede comparar antes/después. Los triggers cubren escrituras ajenas a EF y permanecen pequeños, nombrados y verificables.
+
+**Alternativas consideradas**: confiar solo en EF deja clientes SQL sin defensa; permisos de columna no protegen operaciones administrativas ni expresan bien el error; triggers amplios para auditoría, normalización o reglas entre filas se rechazan por opacidad.
+
+### Auditoría y estado contractual
+
+**Decisión**: `School`, `AcademicYear`, `Grade`, `ClassGroup`, `Person`, `Teacher`, `TeacherContract`, `Subject` y `TeachingAssignment` usan defaults UTC, check cronológico y `rowversion`; un interceptor actualiza `UpdatedAtUtc`. `Enrollment` y `ClassSchedule` solo registran creación. `DocumentType`, `Student` y `AcademicConfiguration` no reciben auditoría genérica ni rowversion. Un contrato `Cancelled` requiere timestamp, razón y fecha efectiva; `Confirmed` exige los tres nulos.
+
+**Fundamento**: un default no se vuelve a ejecutar en update. El interceptor hace explícita la política y `rowversion` detecta pérdida de actualización. El estado contractual queda autosuficiente y auditable sin inferir cancelación desde un nullable aislado.
+
+**Alternativas consideradas**: soft delete genérico, timestamps en toda tabla y campos de cancelación parcialmente nulos se rechazan por semántica ambigua. Persistir `Current` sigue rechazado porque se vuelve obsoleto.
 
 ### Estado contractual efectivo
 
@@ -76,7 +108,7 @@ Microsoft clasifica .NET 10 como LTS en soporte activo hasta 2028-11-14; .NET 8 
 
 **Decisión**: OpenAPI 3.1.0 modular, rutas `/api/...`, camelCase, `security: []` y `ProblemDetails` con `code` y errores por campo. Cada operación declara solo los estados que puede producir. Los diez YAML del bundle canónico están versionados y son reproducibles desde el baseline `1223630ab99bf1bfaa4f5919fccf5ff539379c8e`; su checksum combinado es `802c13b91bf5c6425d24c540b6841a2abe134e084ea310fc2b7041e32c24a81a`.
 
-**Fundamento**: ASP.NET Core 10 admite generación OpenAPI de primera parte para Controllers y Minimal APIs. La modularidad mantiene unidades revisables menores a 400 líneas.
+**Fundamento**: ASP.NET Core 10 admite generación OpenAPI de primera parte para Controllers y Minimal APIs, pero el paquete estable `10.0.9` resuelve `Microsoft.OpenApi` `2.0.0`, afectado por una vulnerabilidad alta. El bundle YAML canónico satisface el contrato sin aceptar el riesgo ni suprimir NU1903.
 
 **Alternativas consideradas**: un único YAML sería más simple de mover, pero sobrecarga revisión. Swagger/OpenAPI de terceros no es necesario para el contrato base.
 
@@ -107,4 +139,4 @@ Microsoft clasifica .NET 10 como LTS en soporte activo hasta 2028-11-14; .NET 8 
 - [Estrategia de pruebas EF Core](https://learn.microsoft.com/en-us/ef/core/testing/choosing-a-testing-strategy), actualizada 2026-06-26.
 - [Pruebas de integración ASP.NET Core 10](https://learn.microsoft.com/en-us/aspnet/core/test/integration-tests?view=aspnetcore-10.0), actualizada 2026-06-26.
 - [Módulo SQL Server de Testcontainers](https://dotnet.testcontainers.org/modules/mssql/).
-- Índices oficiales de NuGet consultados el 2026-07-10 para confirmar EF/OpenAPI `10.0.9`, Testcontainers `4.13.0` y xUnit v3 `3.2.2`.
+- Índices oficiales de NuGet consultados el 2026-07-10 para confirmar EF `10.0.9`, Testcontainers `4.13.0`, xUnit v3 `3.2.2` y la vulnerabilidad transitiva que impide usar OpenAPI runtime en S01.

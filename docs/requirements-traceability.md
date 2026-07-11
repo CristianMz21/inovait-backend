@@ -4,160 +4,112 @@
 
 | Aspecto | Fuente canónica |
 | --- | --- |
-| comportamiento y prioridad | `specs/001-school-enrollment-management/spec.md` |
-| decisiones técnicas y modelo | `plan.md`, `research.md`, `data-model.md` |
-| HTTP | `contracts/openapi.yaml` y referencias externas |
+| comportamiento/prioridad | `specs/001-school-enrollment-management/spec.md` |
+| decisiones/implementación | `plan.md`, `research.md`, `data-model.md` |
+| HTTP | `contracts/openapi.yaml` y referencias; sin cambios en este refactor |
 | ER | `docs/entity-relationship-model.md` |
-| pruebas previstas | `docs/testing-strategy.md` |
-| consigna preservada | `docs/assessment-baseline.md` |
-| secuencia ejecutable | `specs/001-school-enrollment-management/tasks.md` |
+| pruebas | `docs/testing-strategy.md` |
+| secuencia/slices | `specs/001-school-enrollment-management/tasks.md` |
 
-Esta matriz relaciona, sin redefinir reglas, los 52 REQ, 35 SCN, 5 BQ, 9 OUT, 15 `operationId` y las 76 tareas vigentes. P0 comprende T001–T051; P1 condicional T052–T071; cierre T072–T076.
+La matriz cubre 63 REQ, 35 SCN, 5 BQ, 9 OUT, 15 `operationId` y 103 tareas del task set `production-model-v2.0.0`. P0 comprende V2-T001–V2-T075; P1 condicional V2-T076–V2-T099; cierre V2-T100–V2-T103. Los IDs v1 `T001`–`T076` no son ejecutables; ver [task-id-supersession.md](./task-id-supersession.md).
 
-## Consumidores del repositorio frontend
+## Operaciones HTTP
 
-La planificación frontend remediada define **13 consumidores runtime** y conserva las 15 operaciones en la verificación contractual. `listSubjects` y `listTeachersBySchool` son contract-only: no tienen método cliente ni llamada visual hasta que exista un consumidor real.
+El modelo de persistencia no altera el contrato. Los 15 `operationId` siguen siendo:
 
-| `operationId` | Estado frontend | Superficie | Tareas frontend vigentes |
+| Prioridad | Operaciones | Evidencia / productor | Tareas backend |
 | --- | --- | --- | --- |
-| `listSchools` | runtime | FE-S01/02/03/05 | T011–T012 |
-| `listGrades` | runtime | FE-S01/02/05 | T011–T012 |
-| `listAcademicYears` | runtime | FE-S01/02/05 | T011–T012 |
-| `listClassGroups` | runtime | FE-S01/02 | T011–T012 |
-| `listTeachers` | runtime | FE-S03 | T011–T012 |
-| `listSubjects` | contract-only | sin consumidor visual | T008 |
-| `listTeachersBySchool` | contract-only | flujo teacher-first sin llamada por escuela | T008 |
-| `createEnrollment` | runtime | FE-S01 | T014–T019 |
-| `listEnrollments` | runtime | FE-S02 | T020–T024 |
-| `createTeacherContracts` | runtime | FE-S03 | T025–T030 |
-| `listTeacherContracts` | runtime | FE-S04 | T025–T030 |
-| `getAgeDistribution` | runtime P1 | FE-S05 | T036–T040,T047 |
-| `getDistinctTeacherCountsBySector` | runtime P1 | FE-S05 | T036–T038,T041–T042,T047 |
-| `getTopSchoolsByEnrollment` | runtime P1 | FE-S05 | T036–T038,T043–T044,T047 |
-| `getStudentHistory` | runtime P1 | FE-S06 | T036,T045–T047 |
+| P0 catálogos | `listSchools`, `listGrades`, `listAcademicYears`, `listClassGroups`, `listTeachers` | `IT-CATALOGS` / V2-T047 | V2-T047–V2-T051 |
+| P0 inscripción | `createEnrollment` | `IT-ENR-CREATE`, `IT-ENR-IDENTITY`, `IT-ENR-CONTEXT` / V2-T052; `IT-ENR-ATOMIC` / V2-T053 | V2-T052–V2-T057 |
+| P0 inscripción | `listEnrollments` | `IT-ENR-FILTER` / V2-T058 | V2-T058–V2-T061 |
+| P0 contratos | `createTeacherContracts`, `listTeacherContracts`, `listTeachersBySchool` | `IT-CON-MULTI`, `IT-CON-DATES`, `IT-CON-LIST`, `IT-OPENAPI-P0` / V2-T062 | V2-T062–V2-T067 |
+| P0 transversal | errores 400/404/409/422 | `IT-PROBLEMS` / V2-T062 | V2-T047–V2-T067 |
+| P1 catálogo | `listSubjects` | `IT-LIST-SUBJECTS` / V2-T084; orden `name, code, id` | V2-T084–V2-T087 |
+| P1 reportes/historia | `getAgeDistribution`, `getDistinctTeacherCountsBySector`, `getTopSchoolsByEnrollment`, `getStudentHistory` | `IT-RPT-AGE`, `IT-RPT-SECTOR`, `IT-RPT-TOP`, `IT-HISTORY` | V2-T088–V2-T100 |
 
-Todas las superficies deben conservar teclado, foco visible, labels, adaptación responsive y anuncio accesible de `ProblemDetails`; la implementación visual pertenece a `inovait-frontend`.
+`DocumentTypeId` y los schemas SQL no se exponen; `documentType` continúa proyectando `DocumentType.Code`. El frontend conserva 13 consumidores runtime y dos operaciones contract-only (`listSubjects`, `listTeachersBySchool`) hasta que exista consumidor visual.
 
-**Estado frontend verificado en planificación**: 49 tareas; P0 T001–T035, P1 condicional T036–T047 y cierre T048–T049; 0 tareas ejecutadas. El contenido de planificación entre repositorios está sincronizado. Los diez YAML del contrato backend están versionados en el baseline `1223630ab99bf1bfaa4f5919fccf5ff539379c8e` con checksum combinado `802c13b91bf5c6425d24c540b6841a2abe134e084ea310fc2b7041e32c24a81a`.
+## Índice de escenarios
 
-## Índice exacto de escenarios
+| Historia | Escenarios | Slice de evidencia |
+| --- | --- | --- |
+| US1 | SCN-001–SCN-007 | S09 / V2-T052–V2-T057 |
+| US2 | SCN-008–SCN-012 | S10 / V2-T058–V2-T061 |
+| US3 | SCN-013–SCN-019 | S11 / V2-T062–V2-T067 |
+| US4 | SCN-020–SCN-023 | S14 / V2-T088–V2-T090 |
+| US5 | SCN-024–SCN-027 | S15 / V2-T091–V2-T093 |
+| US6 | SCN-028–SCN-030 | S16 / V2-T094–V2-T096 |
+| US7 | SCN-031–SCN-035 | S13/S17 / V2-T076–V2-T087,V2-T097–V2-T099 |
 
-| Historia | Escenarios |
-| --- | --- |
-| US1 | SCN-001, SCN-002, SCN-003, SCN-004, SCN-005, SCN-006, SCN-007 |
-| US2 | SCN-008, SCN-009, SCN-010, SCN-011, SCN-012 |
-| US3 | SCN-013, SCN-014, SCN-015, SCN-016, SCN-017, SCN-018, SCN-019 |
-| US4 | SCN-020, SCN-021, SCN-022, SCN-023 |
-| US5 | SCN-024, SCN-025, SCN-026, SCN-027 |
-| US6 | SCN-028, SCN-029, SCN-030 |
-| US7 | SCN-031, SCN-032, SCN-033, SCN-034, SCN-035 |
-
-`SCN-035` es **backend-only**: valida la creación interna/seed de TeachingAssignment y no corresponde a una acción ni endpoint de escritura frontend.
+`SCN-035` permanece backend-only.
 
 ## Preguntas de negocio
 
-| ID | Historia / escenarios | Operación | Tablas | Prueba |
-| --- | --- | --- | --- | --- |
-| BQ-001 | US4 / SCN-020,021 | `getAgeDistribution` | Enrollment, ClassGroup, Student | T059–T060; IT-RPT-AGE |
-| BQ-002 | US4 / SCN-020–023 | `getAgeDistribution` | Enrollment, ClassGroup, Student | T059–T060; IT-RPT-AGE |
-| BQ-003 | US5 / SCN-024–027 | `getDistinctTeacherCountsBySector` | TeacherContract, Teacher, School | T061–T062; IT-RPT-SECTOR |
-| BQ-004 | US6 / SCN-028–030 | `getTopSchoolsByEnrollment` | Enrollment, ClassGroup, School | T063–T064; IT-RPT-TOP |
-| BQ-005 | US7 / SCN-031–035 | `getStudentHistory` | Student, Enrollment, ClassGroup, TeachingAssignment, ClassSchedule, TeacherContract, Teacher, Subject | T052–T058,T065–T066; IT-HISTORY/ASSIGNMENT |
+| ID | Operación | Tablas fuente | Prueba/tareas |
+| --- | --- | --- | --- |
+| BQ-001/002 | `getAgeDistribution` | Person→Student→Enrollment→ClassGroup | `IT-RPT-AGE`; V2-T088–V2-T090 |
+| BQ-003 | `getDistinctTeacherCountsBySector` | Person→Teacher→TeacherContract→School | `IT-RPT-SECTOR`; V2-T091–V2-T093 |
+| BQ-004 | `getTopSchoolsByEnrollment` | Enrollment→ClassGroup→School | `IT-RPT-TOP`; V2-T094–V2-T096 |
+| BQ-005 | `getStudentHistory` | Person/Student→Enrollment→ClassGroup→TeachingAssignment→Contract/Teacher/Subject | `IT-HISTORY`; V2-T076–V2-T083,V2-T097–V2-T099 |
 
-## Matriz exacta
+## Matriz REQ → diseño → tareas → evidencia
 
-| REQ | US / SCN | Modelo o restricción | `operationId` | Pantalla | Prueba prevista |
-| --- | --- | --- | --- | --- | --- |
-| REQ-001 | US1 / SCN-001–003 | UQ Student normalized document | `createEnrollment`, `getStudentHistory` | FE-S01/06 | UT-IDENTITY; IT-ENR-IDENTITY |
-| REQ-002 | US1 / SCN-001–003 | Student required identity fields | `createEnrollment` | FE-S01 | UT-IDENTITY; IT-ENR-CREATE/IDENTITY |
-| REQ-003 | US1 / SCN-001,007 | Student+Enrollment transaction | `createEnrollment` | FE-S01 | IT-ENR-CREATE; IT-ENR-ATOMIC |
-| REQ-004 | US1 / SCN-002 | identity equivalence and reuse | `createEnrollment` | FE-S01 | UT-IDENTITY; IT-ENR-IDENTITY |
-| REQ-005 | US1 / SCN-003 | identity conflict, no update | `createEnrollment` | FE-S01 | IT-ENR-IDENTITY; IT-PROBLEMS |
-| REQ-006 | US1 / SCN-005 | Student.BirthDate domain rule | `createEnrollment` | FE-S01 | UT-AGE; IT-ENR-CONTEXT |
-| REQ-007 | US1 / SCN-006 | FK catalogs and existence | `listSchools`, `listGrades`, `listAcademicYears`, `listClassGroups`, `createEnrollment` | FE-S01 | IT-CATALOGS; IT-ENR-CONTEXT |
-| REQ-008 | US1 / SCN-006 | ClassGroup context + composite FK | `listClassGroups`, `createEnrollment` | FE-S01 | IT-ENR-CONTEXT |
-| REQ-009 | US1 / SCN-004 | UQ Enrollment student+year | `createEnrollment` | FE-S01 | IT-ENR-ANNUAL |
-| REQ-010 | US1 / SCN-002; US7 / SCN-031 | append-only Enrollment | `createEnrollment`, `getStudentHistory` | FE-S01/06 | IT-ENR-ANNUAL; IT-HISTORY |
-| REQ-011 | US1/US7 / SCN-031 | AcademicYear.IsCurrent; no current Student FK | `getStudentHistory`, `listAcademicYears` | FE-S01/06 | IT-ENR-ANNUAL; IT-HISTORY |
-| REQ-012 | US2 / SCN-008,011 | required joint query context | `listEnrollments` | FE-S02 | IT-ENR-FILTER; IT-PROBLEMS |
-| REQ-013 | US2 / SCN-008 | Enrollment projection | `listEnrollments` | FE-S02 | IT-ENR-FILTER |
-| REQ-014 | US2/US4 / SCN-008,022 | age calculation at asOfDate | `listEnrollments`, `getAgeDistribution` | FE-S02/05 | UT-AGE; IT-ENR-FILTER; IT-RPT-AGE |
-| REQ-015 | US2 / SCN-009,012 | empty valid context | `listEnrollments` | FE-S02 | IT-ENR-FILTER |
-| REQ-016 | US2 / SCN-010–012 | 404 de referencia; IDs existentes sin grupos ⇒ 200 [] | `listEnrollments` | FE-S02 | T033–T036; IT-ENR-FILTER |
-| REQ-017 | US2 / SCN-008 | deterministic Enrollment ordering | `listEnrollments` | FE-S02 | IT-ENR-FILTER |
-| REQ-018 | US3 / SCN-013,016 | Teacher/School FK and preloads | `listTeachers`, `listSchools`, `createTeacherContracts` | FE-S03 | IT-CATALOGS; IT-CON-MULTI/DATES |
-| REQ-019 | US3 / SCN-013 | one TeacherContract per school | `createTeacherContracts` | FE-S03 | IT-CON-MULTI |
-| REQ-020 | US3 / SCN-015 | CK contract end>=start | `createTeacherContracts` | FE-S03 | IT-CON-DATES; IT-PROBLEMS |
-| REQ-021 | US3 / SCN-014 | nullable EndDate; status separate | `createTeacherContracts`, `listTeacherContracts` | FE-S03/04 | UT-CONTRACT-STATUS; IT-CON-DATES/LIST |
-| REQ-022 | US3 / SCN-017 | UQ exact + serializable overlap | `createTeacherContracts` | FE-S03 | UT-CONTRACT-OVERLAP; IT-CON-OVERLAP |
-| REQ-023 | US3 / SCN-018 | overlap key includes SchoolId | `createTeacherContracts` | FE-S03 | UT-CONTRACT-OVERLAP; IT-CON-OVERLAP |
-| REQ-024 | US3 / SCN-015–017 | multi-school transaction | `createTeacherContracts` | FE-S03 | IT-CON-MULTI/DATES/OVERLAP |
-| REQ-025 | US3 / SCN-019 | TeacherContract projection | `listTeacherContracts`, `listTeachersBySchool` | FE-S04 | IT-CON-LIST |
-| REQ-026 | US3 / SCN-019 | start/school/id ordering | `listTeacherContracts` | FE-S04 | IT-CON-LIST |
-| REQ-027 | US1–US3 / independent tests | delivery gate, no table | todas P0 antes de reportes | FE-S01–04 | P0 gate in testing-strategy |
-| REQ-028 | US4–US7 / SCN-020,024,028,031 | four derived queries | four report/history operations | FE-S05/06 | IT-RPT-AGE/SECTOR/TOP; IT-HISTORY |
-| REQ-029 | US4 / SCN-020,022,023 | filtros acumulativos; referencias existentes sin grupos ⇒ ceros | `getAgeDistribution` | FE-S05 | T059–T060; IT-RPT-AGE |
-| REQ-030 | US4 / SCN-020,022 | Enrollment population + age | `getAgeDistribution` | FE-S05 | UT-AGE; IT-RPT-AGE |
-| REQ-031 | US4 / SCN-020,021 | propiedades fijas age3To7/age8To12/ageOver12 | `getAgeDistribution` | FE-S05 | T059–T060; IT-RPT-AGE |
-| REQ-032 | US4 / SCN-021,023 | exclude <3; zero result | `getAgeDistribution` | FE-S05 | UT-AGE; IT-RPT-AGE |
-| REQ-033 | US5 / SCN-024,025 | Confirmed + inclusive intersection | `getDistinctTeacherCountsBySector` | FE-S05 | UT-CONTRACT-OVERLAP/STATUS; IT-RPT-SECTOR |
-| REQ-034 | US5 / SCN-026 | DISTINCT TeacherId per sector | `getDistinctTeacherCountsBySector` | FE-S05 | IT-RPT-SECTOR |
-| REQ-035 | US5 / SCN-027 | grouping independently by sector | `getDistinctTeacherCountsBySector` | FE-S05 | IT-RPT-SECTOR |
-| REQ-036 | US6 / SCN-028 | group Enrollment by derived School | `getTopSchoolsByEnrollment` | FE-S05 | IT-RPT-TOP |
-| REQ-037 | US6 / SCN-029,030 | all max ties; name/id order | `getTopSchoolsByEnrollment` | FE-S05 | IT-RPT-TOP |
-| REQ-038 | US7 / SCN-031,034 | normalized lookup + annual order | `getStudentHistory` | FE-S06 | UT-IDENTITY; IT-HISTORY |
-| REQ-039 | US7 / SCN-032,033 | left projection of assignments | `getStudentHistory` | FE-S06 | IT-HISTORY |
-| REQ-040 | US7 / SCN-032,035 backend-only | Assignment FK; regla school/time interna | `getStudentHistory` (lectura) | FE-S06 sin acción de alta | T052–T058,T065–T066 |
-| REQ-041 | US7 / SCN-032,035 backend-only | TeachingAssignment + ClassSchedule PK/CHECK | `getStudentHistory` | FE-S06 | T052–T058,T065–T066 |
-| REQ-042 | US1–US7 / SCN de error | canonical ProblemDetails | todas | FE-S01–06 | IT-PROBLEMS; IT-OPENAPI |
-| REQ-043 | US1–US7 / SCN-003,005,006,010,011,015–017,034,035 | HTTP 400/404/409/422 mapping | todas | FE-S01–06 | IT-PROBLEMS |
-| REQ-044 | US1–US7 / todos | OpenAPI `security: []` | todas | FE-S01–06 | IT-OPENAPI; walkthrough |
-| REQ-045 | US1–US7 / fixtures | seeds/examples ficticios por fase | todas | FE-S01–06 | IT-SEED-P0/IT-SEED-P1; review |
-| REQ-046 | US1/2/4/6 / SCN-002,010,020,028 | AcademicYear table + filtered current UX | `listAcademicYears` y operaciones por año | FE-S01/02/05 | IT-CATALOGS; IT-ENR-*; IT-RPT-AGE/TOP |
-| REQ-047 | US3/5 / SCN-014,019,024,025 | status CHECK + effective derivation | contract ops; `getDistinctTeacherCountsBySector` | FE-S03–05 | UT-CONTRACT-STATUS; IT-CON-LIST; IT-RPT-SECTOR |
-| REQ-048 | US2/3/6/7 / SCN-008,019,029,031,032 | explicit ORDER BY; no paging | todas las listas/reportes | FE-S01–06 | IT-CATALOGS; IT-ENR-FILTER; IT-CON-LIST; IT-RPT-*; IT-HISTORY |
-| REQ-049 | US1–US7 / independent tests | 8 tablas/seeds P0; extensión a 11 y dataset especializado P1 | todas, incluido `listSubjects` | FE-S01–06 | T016,T043–T044,T056,T058,T069 |
-| REQ-050 | US1–US7 / planning review | artifact ownership table | N/A governance | N/A | plan review; IT-OPENAPI |
-| REQ-051 | US1–US7 / review units | modular YAML/docs under 400 lines | N/A governance | N/A | changed-line review |
-| REQ-052 | US1–US7 / model review | 3NF; Enrollment composite FK; no aggregates | todas las consultas derivadas | FE-S01–06 | schema review; IT-SQL-SCRIPT/IT-SQL-SCRIPT-P1; IT-RPT-* |
+| REQ | Diseño/restricción | Tareas | Evidencia |
+| --- | --- | --- | --- |
+| REQ-001–REQ-005 | Person única, UQ tipo+número, resolución/reuso/conflicto | V2-T027–V2-T031,V2-T052–V2-T057 | `UT-IDENTITY`, `IT-PERSON-COLLATION`, `IT-ENR-CREATE`, `IT-ENR-IDENTITY` (V2-T052) |
+| REQ-006 | `Person.BirthDate` y regla de fecha futura | V2-T027–V2-T030,V2-T052–V2-T057 | `UT-IDENTITY`, `IT-ENR-CONTEXT` (V2-T052) |
+| REQ-007–REQ-011 | catálogos, ClassGroup, FK compuesto, UQ anual, singleton actual | V2-T020–V2-T026,V2-T032–V2-T037,V2-T046,V2-T052–V2-T057 | `IT-SINGLETON`, `IT-ENR-ANNUAL`, `IT-ENR-CONTEXT`, `IT-ENR-ATOMIC` |
+| REQ-012–REQ-017 | query conjunta desde ClassGroup/Enrollment/Person y edad cumplida | V2-T058–V2-T061 | `UT-AGE`, `IT-ENR-FILTER` |
+| REQ-018–REQ-026 | rol Teacher, TeacherContract, checks, UQ y Serializable | V2-T038–V2-T043,V2-T062–V2-T067 | `UT-CONTRACT-*`, `IT-CON-*` |
+| REQ-027 | puerta P0 antes de P1 | V2-T068–V2-T075 | runner, paridad y walkthrough P0 |
+| REQ-028–REQ-032 | reporte de edades derivado | V2-T088–V2-T090 | `IT-RPT-AGE` |
+| REQ-033–REQ-035 | contratos Confirmed/intersección y distinct por sector | V2-T038–V2-T043,V2-T091–V2-T093 | `IT-RPT-SECTOR` |
+| REQ-036–REQ-037 | máximo derivado desde Enrollment, empates/orden | V2-T094–V2-T096 | `IT-RPT-TOP` |
+| REQ-038–REQ-039 | lookup canónico e historia | V2-T097–V2-T099 | `IT-HISTORY` |
+| REQ-040–REQ-041 | asignación/horarios e historia relacionada | V2-T076–V2-T083,V2-T097–V2-T099 | `UT-ASSIGNMENT`, `IT-ASSIGNMENT-PERIOD`, `IT-HISTORY` |
+| REQ-042–REQ-045 | ProblemDetails, errores, sin auth, datos ficticios | V2-T047–V2-T051,V2-T055,V2-T062,V2-T066,V2-T073 | `IT-PROBLEMS`, `IT-OPENAPI-P0`, `IT-OPENAPI`, revisión de seeds |
+| REQ-046 | `catalog.AcademicYear` + singleton actual | V2-T020–V2-T026,V2-T046,V2-T049–V2-T050 | `IT-SINGLETON`, `IT-CATALOGS` |
+| REQ-047 | estado persistido, cancelación y vigencia derivada | V2-T038–V2-T043,V2-T062–V2-T067,V2-T091–V2-T093 | `UT-CONTRACT-STATUS/CANCELLATION`, `IT-CON-CANCELLATION` |
+| REQ-048 | órdenes explícitos sin paginación; `listSubjects` por `name, code, id` | V2-T049–V2-T051,V2-T059–V2-T060,V2-T064–V2-T065,V2-T084–V2-T100 | pruebas de listas/reportes completas |
+| REQ-049 | seeds P0/P1 ficticios | V2-T024,V2-T045,V2-T068–V2-T069,V2-T082–V2-T083,V2-T087 | `IT-SEED-P0/P1` |
+| REQ-050 | fuentes especializadas y contrato intacto | V2-T001–V2-T004,V2-T073,V2-T084–V2-T087,V2-T103 | igualdad de árbol/`IT-LIST-SUBJECTS`/`IT-OPENAPI` |
+| REQ-051 | presupuesto revisable | V2-T003 y gates V2-T010,V2-T019,V2-T026,V2-T031,V2-T037,V2-T043,V2-T046,V2-T051,V2-T057,V2-T061,V2-T067,V2-T075,V2-T087,V2-T090,V2-T093,V2-T096,V2-T099,V2-T103 | comando additions+deletions por slice |
+| REQ-052 | 3NF; única dependencia controlada Enrollment | V2-T032–V2-T037,V2-T069,V2-T083,V2-T102 | `IT-NORMAL-FORMS`, paridad |
+| REQ-053 | schemas exactos; `catalog.AcademicYear` | V2-T020–V2-T026,V2-T044–V2-T046,V2-T068–V2-T069 | parcial `IT-CATALOG-SCHEMA-S03`; completo `IT-SCHEMAS-P0` solo en V2-T046; `IT-SQL-SCRIPT*` |
+| REQ-054 | Person + roles PK/FK independientes | V2-T027–V2-T031,V2-T052–V2-T057 | `IT-PERSON-DUAL-ROLE` |
+| REQ-055 | normalizador Unicode; CHECK vacío/U+0020; CI_AS | V2-T011,V2-T013–V2-T014,V2-T022,V2-T027–V2-T030 | `UT-TEXT-NORMALIZATION`, `IT-TEXT-CHECKS`, `IT-PERSON-COLLATION` |
+| REQ-056 | códigos/sector inmutables y `DocumentType` read-only runtime | V2-T020–V2-T026,V2-T045–V2-T046,V2-T068–V2-T069,V2-T077–V2-T079 | parcial `IT-CATALOG-MUTABILITY-S03`; completos `IT-IMMUTABILITY`/`IT-REFERENCE-PERMISSIONS` en V2-T046 |
+| REQ-057 | lista auditada exacta y assertions negativas por disponibilidad | V2-T012–V2-T019,V2-T022,V2-T028–V2-T029,V2-T034,V2-T041,V2-T046,V2-T077–V2-T079,V2-T087 | `UT-AUDIT-INTERCEPTOR`, `IT-AUDIT-UTC-P0/P1`, `IT-ROWVERSION-P0/P1` |
+| REQ-058 | singleton máximo/existencia/permisos/delete | V2-T020–V2-T026,V2-T044–V2-T046,V2-T068–V2-T069 | parcial `IT-CATALOG-SINGLETON-S03`; completo `IT-SINGLETON` en V2-T046 |
+| REQ-059 | cancelación all-or-none | V2-T038–V2-T043,V2-T062–V2-T067 | `UT/IT-CON-CANCELLATION` |
+| REQ-060 | período y compatibilidad de TeachingAssignment | V2-T076,V2-T078–V2-T080,V2-T097–V2-T099 | `UT-ASSIGNMENT`, `IT-ASSIGNMENT-PERIOD` |
+| REQ-061 | índices OLTP key/include sin `Id` redundante bajo PK clustered | V2-T032,V2-T035,V2-T039,V2-T041,V2-T070,V2-T077,V2-T079 | `IT-INDEXES-P0/P1` |
+| REQ-062 | paridad migración/setup, incluidos permisos | V2-T044–V2-T046,V2-T068–V2-T070,V2-T081–V2-T083 | `IT-SQL-SCRIPT/P1` |
+| REQ-063 | stacked-to-main, gate por slice, generados aislados | V2-T003 y los 18 gates pre-merge | manifest, diff y forecast |
 
-## Tareas vigentes por capacidad
+## Cobertura del modelo
 
-| Capacidad | Tareas | Estado de prioridad |
-| --- | --- | --- |
-| decisiones pre-apply y guía temprana | T001–T004 | bloqueante antes de scaffold |
-| scaffold, 8 tablas y Testcontainers | T005–T020 | P0 |
-| cinco catálogos P0 | T021–T026 | P0 |
-| US1 alta/atomicidad | T027–T032 | P0 |
-| US2 consulta | T033–T036 | P0 |
-| US3 contratos | T037–T042 | P0 |
-| SQL, runner, README, handoff y gate | T043–T051 | P0 |
-| tres tablas/seeds/listSubjects P1 | T052–T058 | P1 condicional |
-| US4–US7 | T059–T071 | P1 condicional |
-| cierre aplicable | T072–T076 | posterior a P0; P1 solo si fue autorizado |
+| Hito | Tablas | Gate |
+| --- | ---: | --- |
+| P0 | 11 | V2-T075: US1–US3, metadatos, paridad, manifest exacto de 37 IDs ejecutado; ≥20 casos solo como sanity check; walkthrough |
+| P1 | 14 | solo después de V2-T075; V2-T076–V2-T099 |
+
+La prueba de normalización relacional queda en `data-model.md`: todas las tablas alcanzan BCNF salvo `Enrollment`, que cumple 3NF y conserva `AcademicYearId` únicamente para unicidad anual concurrente. `UQ_ClassGroup_Id_AcademicYear_ForEnrollment` soporta el FK y no expresa identidad de negocio.
 
 ## Resultados medibles
 
-| OUT | Evidencia planificada |
+| OUT | Evidencia |
 | --- | --- |
-| OUT-001–OUT-004 | T027–T050: tres recorridos, atomicidad, tiempo manual y orden |
-| OUT-005 | T059–T071, únicamente P1 condicional |
-| OUT-006 | T048: observación local calentada, no gating y sin umbral |
-| OUT-007 | T061–T064,T071, únicamente P1 condicional |
-| OUT-008 | T008,T016,T043,T072–T076 |
-| OUT-009 | T014–T017,T043–T044,T054–T055,T069,T075: 3NF, FK compuesto y cero agregados/redundancias injustificadas |
+| OUT-001–OUT-004 | V2-T052–V2-T075: P0, atomicidad, walkthrough y orden |
+| OUT-005, OUT-007 | V2-T088–V2-T100: cálculos P1 y empates/sectores |
+| OUT-006 | V2-T072: observación local no gating |
+| OUT-008 | V2-T008,V2-T024,V2-T068,V2-T082,V2-T101–V2-T103 |
+| OUT-009 | V2-T032–V2-T046,V2-T068–V2-T070,V2-T076–V2-T087,V2-T102 |
 
-## Cobertura de operaciones y tablas
+## Estado
 
-Las 15 operaciones aparecen al menos una vez. El backend P0 implementa 10 operationIds runtime (cinco catálogos, create/list enrollments y tres contratos) y P1 agrega `listSubjects`, tres reportes e historia. El frontend consume 9 de las operaciones P0 y 4 de P1: 13 runtime en total; `listTeachersBySchool` y `listSubjects` permanecen contract-only. El modelo completo tiene 11 tablas, pero P0 materializa 8 y P1 agrega 3. `ClassSchedule` solo se expone dentro de historia; no se crea un endpoint de mantenimiento ni uno duplicado para BQ-005.
-
-## Estado de planificación
-
-- REQ-001–REQ-052: 52/52 trazados.
-- BQ-001–BQ-005: 5/5 trazadas.
-- US1–US7 y SCN-001–SCN-035: presentes.
-- OUT-001–OUT-009: 9/9 enlazados; OUT-006 es observación no gating.
-- operationIds: 15/15; 10 P0 y 5 P1 condicionales.
-- Tareas: 76/76 vigentes; T001–T051 P0, T052–T071 P1, T072–T076 cierre.
-- Frontend observado: 13 consumidores runtime + 2 contract-only; 49/49 tareas vigentes y contenido de planificación sincronizado con el contrato backend reproducible desde el baseline `1223630ab99bf1bfaa4f5919fccf5ff539379c8e`.
-- Estado de implementación: 0 tareas de implementación ejecutadas; solo se completó la puerta documental T002. No existe scaffold, código, pruebas, migraciones ni `database/setup.sql`.
+- REQ-001–REQ-063: 63/63 trazados.
+- SCN-001–SCN-035 y BQ-001–BQ-005: completos.
+- operationIds: 15/15, sin modificación del bundle.
+- Tareas: 103 en `production-model-v2.0.0`; V2-T001–V2-T009 están completos. V2-T010 conserva pendiente únicamente el gate por SHAs; S02 no comenzó.
+- Existen solución, tres proyectos de producción, dos proyectos xUnit v3 y smoke tests HTTP. No existen entidades, migraciones ni `database/setup.sql`.

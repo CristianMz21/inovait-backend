@@ -2,7 +2,7 @@
 
 **Feature**: `001-school-enrollment-management`
 
-**Rama**: `main`
+**Rama**: `feat/production-data-model`
 
 **Creada**: 2026-07-10
 
@@ -43,12 +43,13 @@
 - Q: ¿Qué población y resultados deben usar los reportes municipales? → A: Las edades son años cumplidos a `asOfDate`, menores de 3 se excluyen, docentes se cuentan de forma distinta por sector, los empates de escuelas se devuelven completos y cinco preguntas conservan trazabilidad sobre cuatro capacidades.
 - Q: ¿Qué reglas observables rigen asignaciones, listas y errores HTTP? → A: Se permiten múltiples `TeachingAssignment` por grupo, cada una usa contrato, grupo, materia y uno o más días compatibles; las listas acotadas no se paginan, se ordenan determinísticamente y distinguen `400`, `404`, `409` y `422` por causa.
 - Q: ¿Qué gobernanza debe respetar la planificación posterior? → A: La feature mantiene una fuente canónica y artefactos especializados trazables, unidades revisables de hasta 400 líneas, modelo relacional en 3NF sin agregados almacenados injustificados y datos ficticios que cubren los casos críticos.
+- Q: ¿Cómo se lleva el modelo a producción sin duplicar identidad ni fingir garantías SQL? → A: `catalog.AcademicYear` es autoritativo; `Person` concentra identidad y admite roles `Student`/`Teacher` simultáneos; el texto se canoniza en aplicación y se protege con collation/checks; auditoría, concurrencia, singleton, inmutabilidad e índices se definen por frontera real.
 
 ## Escenarios de usuario y pruebas *(obligatorio)*
 
 ### Historia de usuario 1 - Inscribir un estudiante (Prioridad: P0)
 
-Una persona operadora ingresa tipo y número de documento, nombres, apellidos, fecha de nacimiento, escuela, año académico, grado y grupo. El sistema normaliza el documento, crea una identidad nueva o reutiliza una identidad coincidente según las reglas de comparación definidas y registra la inscripción como una sola operación de negocio.
+Una persona operadora ingresa tipo y número de documento, nombres, apellidos, fecha de nacimiento, escuela, año académico, grado y grupo. El sistema canoniza el texto, crea una `Person` y su rol `Student` o reutiliza una identidad coincidente según las reglas definidas, y registra la inscripción como una sola operación de negocio.
 
 **Motivo de prioridad**: es el origen de la historia académica y de todos los conteos de estudiantes.
 
@@ -57,8 +58,8 @@ Una persona operadora ingresa tipo y número de documento, nombres, apellidos, f
 **Escenarios de aceptación**:
 
 1. **SCN-001 — Alta completa**: **Given** que el documento no identifica a ningún `Student` y la combinación académica es válida, **When** se solicita la inscripción, **Then** se crean un `Student` y un `Enrollment` relacionados.
-2. **SCN-002 — Identidad existente coincidente**: **Given** un `Student` cuyo documento normalizado coincide y cuyos datos de identidad son equivalentes según las reglas de comparación, **When** se solicita su inscripción para un año posterior sin inscripción previa, **Then** se reutiliza el `Student` y solo se crea el nuevo `Enrollment`.
-3. **SCN-003 — Identidad en conflicto**: **Given** un documento normalizado existente cuyos nombres, apellidos o fecha de nacimiento no son equivalentes según las reglas de comparación, **When** se solicita la inscripción, **Then** se devuelve `409 ProblemDetails` y no se crea ni modifica ningún registro.
+2. **SCN-002 — Identidad existente coincidente**: **Given** una `Person` cuyo tipo/número canónico coincide y cuyos nombres, apellidos y nacimiento son equivalentes, **When** se solicita su inscripción para un año posterior sin inscripción previa, **Then** se reutilizan `Person`/`Student` y solo se crea el nuevo `Enrollment`.
+3. **SCN-003 — Identidad en conflicto**: **Given** un tipo/número canónico existente cuyos nombres, apellidos o nacimiento difieren, **When** se solicita la inscripción, **Then** se devuelve `409 ProblemDetails` y no se crea ni modifica ningún registro.
 4. **SCN-004 — Segunda inscripción anual**: **Given** un `Student` ya inscrito en el año solicitado, **When** se intenta inscribirlo en cualquier escuela, grado o grupo de ese mismo año, **Then** se informa un conflicto y se conserva la inscripción original.
 5. **SCN-005 — Fecha de nacimiento futura**: **Given** una fecha de nacimiento posterior a la fecha actual, **When** se solicita la inscripción, **Then** se rechaza la operación sin persistencia parcial.
 6. **SCN-006 — Referencia o combinación inválida**: **Given** una referencia inexistente o un grupo que no pertenece a la escuela, grado y año indicados, **When** se solicita la inscripción, **Then** se devuelve un error identificable y no se crea ningún dato.
@@ -161,7 +162,8 @@ Una persona operadora identifica un estudiante por tipo y número de documento y
 ### Casos límite
 
 - Dos documentos con igual número pero distinto tipo representan identidades diferentes; la unicidad usa conjuntamente tipo y número.
-- Para comparar identidad, el tipo de documento se recorta y compara sin distinguir mayúsculas; el número se recorta, elimina espacios, puntos y guiones y compara su contenido alfanumérico sin distinguir mayúsculas. Nombres y apellidos se recortan, colapsan espacios internos y comparan sin distinguir mayúsculas, conservando los diacríticos; la fecha de nacimiento debe coincidir exactamente.
+- Para comparar identidad, los textos requeridos se convierten a NFC, se recortan y colapsan whitespace interno. La comparación no distingue mayúsculas, pero sí acentos; no elimina puntuación ni diacríticos. El tipo se resuelve mediante `DocumentType.Code` y el nacimiento debe coincidir exactamente.
+- Una misma `Person` puede tener simultáneamente roles `Student` y `Teacher`; crear un rol nunca duplica documento, nombres ni nacimiento.
 - Una persona cuyo cumpleaños coincide con `asOfDate` ya cumplió el año correspondiente; una fecha de referencia anterior al nacimiento es inválida.
 - Una inscripción del mismo estudiante en otra escuela durante el mismo año se rechaza, aunque pretenda representar un traslado.
 - Un año posterior puede contener otra escuela, grado o grupo sin alterar años anteriores.
@@ -181,17 +183,17 @@ Una persona operadora identifica un estudiante por tipo y número de documento y
 
 #### Inscripción e identidad — P0 / US1
 
-- **REQ-001**: El sistema DEBE identificar de forma única a `Student` por la combinación normalizada de tipo y número de documento.
+- **REQ-001**: El sistema DEBE identificar de forma única a `Person` por `DocumentType` y número de documento canónico, y reutilizar esa identidad para el rol `Student`.
 - **REQ-002**: El sistema DEBE recibir nombres, apellidos y fecha de nacimiento como datos de identidad necesarios para crear o verificar un `Student`.
 - **REQ-003**: El sistema DEBE crear un `Student` nuevo y su `Enrollment` de manera atómica; ambos se confirman o ninguno persiste.
-- **REQ-004**: Cuando ya exista el documento normalizado y nombres, apellidos y fecha de nacimiento coincidan según las reglas de comparación de identidad, el sistema DEBE reutilizar el `Student` y crear únicamente el `Enrollment` solicitado.
-- **REQ-005**: Cuando ya exista el documento normalizado y algún dato de identidad suministrado no coincida según esas reglas, el sistema DEBE devolver `409 ProblemDetails` sin modificar la identidad existente.
+- **REQ-004**: Cuando ya exista el tipo/número canónico y nombres, apellidos y fecha de nacimiento coincidan según las reglas de identidad, el sistema DEBE reutilizar `Person`/`Student` y crear únicamente el `Enrollment` solicitado.
+- **REQ-005**: Cuando ya exista el tipo/número canónico y algún dato de identidad suministrado no coincida, el sistema DEBE devolver `409 ProblemDetails` sin modificar la identidad existente.
 - **REQ-006**: El sistema DEBE rechazar una fecha de nacimiento futura.
 - **REQ-007**: El sistema DEBE comprobar la existencia de `School`, `AcademicYear`, `Grade` y `ClassGroup` antes de crear la inscripción.
 - **REQ-008**: El sistema DEBE aceptar la inscripción solo cuando `ClassGroup` corresponda conjuntamente a la escuela, grado y año solicitados.
 - **REQ-009**: El sistema DEBE permitir como máximo un `Enrollment` por `Student` y `AcademicYear`, sin admitir traslados en el mismo año.
 - **REQ-010**: El sistema DEBE permitir una inscripción en un año posterior, incluso en otra escuela, preservando todas las inscripciones anteriores.
-- **REQ-011**: El sistema DEBE derivar la inscripción actual únicamente del `AcademicYear` designado como actual; `Student` NO DEBE mantener un campo mutable de escuela o inscripción actual y las restantes inscripciones DEBEN seguir disponibles como historia.
+- **REQ-011**: El sistema DEBE derivar la inscripción actual únicamente de `catalog.AcademicConfiguration.CurrentAcademicYearId`; `Student` NO DEBE mantener un campo mutable de escuela o inscripción actual y las restantes inscripciones DEBEN seguir disponibles como historia.
 
 #### Consulta de inscripciones — P0 / US2
 
@@ -227,7 +229,7 @@ Una persona operadora identifica un estudiante por tipo y número de documento y
 - **REQ-035**: Un docente con contratos pertinentes en escuelas públicas y privadas DEBE contarse una vez en cada sector.
 - **REQ-036**: El reporte de escuelas con más estudiantes DEBE exigir un `AcademicYear`, contar sus `Enrollment` por `School` y devolver todas las escuelas empatadas en el máximo.
 - **REQ-037**: Las escuelas empatadas DEBEN ordenarse por nombre y luego por identificador; un año válido sin inscripciones DEBE devolver una colección vacía.
-- **REQ-038**: La historia de un estudiante DEBE localizarlo por tipo y número de documento normalizados y devolver sus inscripciones por inicio de año académico descendente y luego identificador de inscripción ascendente, con escuela, grado y grupo.
+- **REQ-038**: La historia de un estudiante DEBE localizarlo por tipo y número de documento canónicos y devolver sus inscripciones por inicio de año académico descendente y luego identificador de inscripción ascendente, con escuela, grado y grupo.
 - **REQ-039**: Para cada inscripción histórica, el sistema DEBE incluir todos los docentes y materias que sirvieron a su grupo en ese año; la ausencia de asignaciones DEBE representarse como una colección vacía.
 - **REQ-040**: Una `TeachingAssignment` DEBE relacionar un `TeacherContract`, un `Subject` y un `ClassGroup`; la escuela del contrato DEBE coincidir con la del grupo y su relación temporal DEBE ser compatible con el `AcademicYear` del grupo conforme a una regla definida en planificación.
 - **REQ-041**: El sistema DEBE permitir múltiples `TeachingAssignment` para un mismo grupo y representar uno o más días de semana por asignación mediante `ClassSchedule`, sin eliminar docentes o materias múltiples del historial.
@@ -243,14 +245,28 @@ Una persona operadora identifica un estudiante por tipo y número de documento y
 - **REQ-048**: Toda lista de búsqueda o reporte DEBE usar un orden determinista y no paginarse únicamente por el volumen acotado del conjunto de evaluación. Las colecciones anidadas de historia DEBEN ordenarse de forma estable por materia, docente e identificador de asignación.
 - **REQ-049**: El dataset comprometido P0 DEBE contener únicamente catálogos e historia ficticia necesarios para `US1`–`US3`, incluidos varios años, grupos, docentes, escuelas de ambos sectores y contratos abiertos/cerrados. La extensión P1 condicional DEBE agregar límites de edad, empate de líderes y múltiples docentes/materias sin inflar la puerta P0.
 - **REQ-050**: La planificación DEBE preservar una única fuente de verdad por decisión y producir artefactos especializados trazables para especificación funcional, investigación, arquitectura, modelo de datos, OpenAPI, modelo ER, UX, trazabilidad y tareas, sin duplicar reglas canónicas.
-- **REQ-051**: Cada unidad revisable posterior DEBE respetar un presupuesto máximo de 400 líneas modificadas; los artefactos extensos PUEDEN dividirse por responsabilidad cuando la estructura oficial de Spec Kit lo permita.
+- **REQ-051**: Cada unidad revisable posterior DEBE respetar un presupuesto máximo de 400 líneas humanas modificadas; scaffold, lockfiles y migraciones generadas DEBEN aislarse para revisión explícita y no mezclarse con lógica humana.
 - **REQ-052**: El modelo relacional canónico DEBE satisfacer como mínimo 3NF. NO DEBE almacenar agregados de reportes ni introducir estructuras físicas desnormalizadas sin justificación y evidencia documentadas, y ninguna excepción PUEDE reemplazar la fuente normalizada. En particular, la planificación DEBE evitar duplicar `School`, `Grade` o `AcademicYear` en `Enrollment` cuando `ClassGroup` ya los determine, salvo que documente una estrategia de integridad que lo justifique sin crear una segunda fuente de verdad.
+
+#### Modelo de producción — P0/P1 transversal
+
+- **REQ-053**: Las tablas DEBEN pertenecer exactamente a los schemas aprobados: catálogos en `catalog`, identidad/roles en `people`, hechos académicos en `academic` y contratos en `staff`; `AcademicYear` DEBE ser `catalog.AcademicYear`.
+- **REQ-054**: `people.Person` DEBE almacenar una sola identidad; `Student.PersonId` y `Teacher.PersonId` DEBEN ser PK+FK independientes y una persona DEBE poder mantener ambos roles sin duplicar datos.
+- **REQ-055**: El texto Unicode requerido DEBE persistirse en NFC, sin whitespace exterior y con whitespace interno colapsado; la aplicación DEBE tratar tabs, saltos de línea y whitespace Unicode antes de persistir. SQL DEBE conservar `LEN(TRIM([Column])) > 0`, que rechaza vacío y valores formados solo por espacios ordinarios en escritura directa sin atribuirle cobertura de todo whitespace Unicode, y aplicar comparación CI_AS sensible a acentos, sin columnas duplicadas de comparación.
+- **REQ-056**: `DocumentType` DEBE exponer código estable y único y el principal runtime DEBE poder leerlo pero tener DENY explícito de INSERT, UPDATE y DELETE; los códigos de `School`, `AcademicYear`, `Grade` y `Subject`, y `School.Sector`, DEBEN ser inmutables después del alta tanto en EF como ante escrituras SQL directas.
+- **REQ-057**: Exactamente `School`, `AcademicYear`, `Grade`, `ClassGroup`, `Person`, `Teacher`, `TeacherContract`, `Subject` y `TeachingAssignment` DEBEN registrar creación/actualización UTC, validar su orden y detectar actualizaciones concurrentes; `Enrollment` y `ClassSchedule` DEBEN registrar solo creación. `DocumentType`, `Student` y `AcademicConfiguration` NO DEBEN recibir auditoría genérica ni rowversion.
+- **REQ-058**: El año actual DEBE residir en el singleton `catalog.AcademicConfiguration(Id=1)`; la solución DEBE distinguir la garantía declarativa de máximo una fila de la garantía operativa de existencia mediante seed, permisos restringidos, prevención de delete y detección de ausencia.
+- **REQ-059**: Un `TeacherContract` `Cancelled` DEBE registrar timestamp UTC, razón no vacía y fecha efectiva dentro del período; un contrato `Confirmed` DEBE mantener los tres campos nulos.
+- **REQ-060**: `TeachingAssignment` DEBE registrar `StartDate` y fin opcional con rango válido; la aplicación DEBE comprobar en transacción que contrato y grupo comparten escuela y que el período de asignación queda contenido en contrato y año.
+- **REQ-061**: El esquema DEBE declarar índices OLTP nombrados y no redundantes para inscripciones por grupo/año, contratos por docente/escuela y fecha, y asignaciones por grupo/contrato y fecha, incluyendo las columnas de proyección requeridas.
+- **REQ-062**: La migración EF y `database/setup.sql` DEBEN mantener paridad de schemas, tablas, tipos, collation, defaults, constraints, índices/includes, triggers, seeds y permisos relevantes sobre bases limpias.
+- **REQ-063**: La implementación DEBE entregarse como slices `stacked-to-main` de hasta 400 líneas humanas, con scaffold y migraciones generadas aislados; P1 DEBE continuar detrás de la puerta P0.
 
 ### Datos e historia *(obligatorio cuando corresponda)*
 
-- **Entidades**: `School`, `Student`, `AcademicYear`, `Grade`, `ClassGroup`, `Enrollment`, `Teacher`, `TeacherContract`, `Subject`, `TeachingAssignment` y `ClassSchedule`.
+- **Entidades**: `School`, `AcademicYear`, `AcademicConfiguration`, `Grade`, `Subject`, `DocumentType`, `Person`, `Student`, `Teacher`, `ClassGroup`, `Enrollment`, `TeacherContract`, `TeachingAssignment` y `ClassSchedule`.
 - **Historia**: `Enrollment` conserva la trayectoria anual del estudiante y `TeacherContract` conserva los períodos por escuela. Una nueva inscripción anual, contrato o asignación agrega información; no sobrescribe años o períodos anteriores.
-- **Integridad**: `Student` es único por tipo y número de documento; existe un máximo de un `Enrollment` por estudiante y año; cada `Enrollment` referencia una combinación válida; cada `TeacherContract` pertenece a un docente y una escuela; cada `TeachingAssignment` usa la misma escuela que el contrato docente. Las eliminaciones que destruyan historia deben rechazarse.
+- **Integridad**: `Person` es única por tipo y número de documento; los roles no duplican identidad; existe un máximo de un `Enrollment` por estudiante y año; cada `Enrollment` referencia una combinación válida; cada `TeacherContract` pertenece a un docente y una escuela; cada `TeachingAssignment` usa la misma escuela que el contrato docente. Las eliminaciones que destruyan historia deben rechazarse.
 - **Fechas**: nacimiento, inicio y fin contractual, `asOfDate` y límites de períodos son fechas de negocio sin hora. Los extremos de intervalos son inclusivos.
 - **Normalización relacional**: el modelo canónico debe alcanzar al menos 3NF y derivar reportes desde registros históricos. Cualquier estructura física redundante excepcional requiere justificación de integridad y evidencia en planificación y no puede convertirse en una segunda fuente de verdad.
 
@@ -279,15 +295,18 @@ La clasificación se basa en la causa observable: `400` cubre un contrato HTTP q
 ### Entidades clave *(incluir si la feature maneja datos)*
 
 - **`School`**: escuela de la única ciudad del sistema; pertenece al sector Public o Private y agrupa contextos académicos, inscripciones y contratos.
-- **`Student`**: identidad personal única por tipo y número de documento, con nombres, apellidos y fecha de nacimiento; conserva múltiples inscripciones anuales.
-- **`AcademicYear`**: catálogo académico administrado y precargado, referenciado por identificador; como máximo uno puede designarse como actual y los anteriores permanecen consultables.
+- **`DocumentType`**: referencia estable de tipos documentales mediante código único y estado de disponibilidad.
+- **`Person`**: identidad única por tipo y número de documento, con nombres, apellidos y nacimiento, compartida por roles.
+- **`Student`**: rol uno-a-uno de `Person`; conserva múltiples inscripciones anuales.
+- **`AcademicYear`**: catálogo `catalog.AcademicYear` administrado y precargado, con código estable y límites.
+- **`AcademicConfiguration`**: singleton que referencia el único año actual configurado.
 - **`Grade`**: nivel académico al que pertenece una inscripción y en el que se organizan grupos.
 - **`ClassGroup`**: grupo válido para una escuela, grado y año académico; recibe estudiantes y asignaciones docentes.
 - **`Enrollment`**: registro histórico que vincula un estudiante con su `ClassGroup`; el grupo determina escuela, año y grado, solo existe uno por estudiante y año y cualquier redundancia relacional requiere justificación de integridad en planificación.
-- **`Teacher`**: docente precargado que puede mantener contratos simultáneos con varias escuelas.
-- **`TeacherContract`**: período contractual independiente entre docente y escuela, con inicio, fin opcional y estado persistido separado de su validez temporal.
+- **`Teacher`**: rol uno-a-uno de `Person`, compatible con el rol `Student`, que puede mantener contratos simultáneos con varias escuelas.
+- **`TeacherContract`**: período contractual independiente entre docente y escuela, con inicio, fin opcional, estado persistido y cancelación consistente.
 - **`Subject`**: materia que puede impartirse a un grupo mediante una asignación docente.
-- **`TeachingAssignment`**: servicio de un docente contratado para un grupo, materia y contexto académico compatible con la escuela del contrato.
+- **`TeachingAssignment`**: servicio temporal de un docente contratado para un grupo, materia y contexto académico compatible con la escuela y período del contrato.
 - **`ClassSchedule`**: uno o más días de semana asociados a una asignación docente.
 
 ## Trazabilidad *(obligatorio)*
@@ -337,6 +356,15 @@ Las cinco preguntas municipales permanecen como objetivos de trazabilidad indepe
 | REQ-049 | US1-US7 / pruebas independientes | Datos ficticios demuestran límites, empates, sectores e historia | P0/P1 |
 | REQ-050, REQ-051 | US1-US7 / revisión de planificación | Artefactos especializados trazables y unidades revisables acotadas | P0/P1 |
 | REQ-052 | US1-US7 / revisión del modelo y reportes | 3NF mínima y ausencia de redundancia o agregados injustificados | P0/P1 |
+| REQ-053 | US1-US7 / revisión de metadatos | Cuatro schemas exactos y `catalog.AcademicYear` | P0/P1 |
+| REQ-054, REQ-055 | US1, US3, US7 / SCN-001–003,013,031–034 | Persona única, roles duales, texto canónico y collation | P0/P1 |
+| REQ-056 | Catálogos / revisión de escritura | Códigos/sector inmutables en EF y SQL | P0/P1 |
+| REQ-057 | Escrituras mutables / conflicto concurrente | Auditoría exacta, UpdatedAt y RowVersion | P0/P1 |
+| REQ-058 | US1, US2, US4, US6 | Singleton existente y protegido para año actual | P0/P1 |
+| REQ-059 | US3, US5 / SCN-014,019,024,025 | Cancelación all-or-none y fecha válida | P0/P1 |
+| REQ-060 | US7 / SCN-032,035 | Período de asignación y compatibilidad transaccional | P1 |
+| REQ-061, REQ-062 | US1-US7 / pruebas SQL | Índices OLTP y paridad migración/setup | P0/P1 |
+| REQ-063 | US1-US7 / revisión de entrega | `stacked-to-main`, ≤400 líneas humanas y generados aislados | P0/P1 |
 
 ## Criterios de éxito *(obligatorio)*
 
@@ -358,8 +386,8 @@ Las cinco preguntas municipales permanecen como objetivos de trazabilidad indepe
 - “Una escuela” significa ausencia de membresías simultáneas: existe un solo `Enrollment` por estudiante y año. Los traslados en el mismo año están fuera de alcance y se rechazan.
 - Un año académico posterior puede usar otra escuela, grado o grupo y siempre agrega historia.
 - La identidad existente se resuelve por tipo y número de documento. Coincidencia completa reutiliza `Student`; diferencias en nombres, apellidos o fecha de nacimiento generan conflicto.
-- La inscripción actual es la del `AcademicYear` designado como actual; cualquier otra sigue disponible como historia.
-- `AcademicYear` es un catálogo administrado y precargado, no un entero libre enviado por la persona usuaria; como máximo uno está designado como actual.
+- La inscripción actual es la del `AcademicYear` referenciado por `AcademicConfiguration(Id=1)`; cualquier otra sigue disponible como historia.
+- `AcademicYear` es un catálogo administrado y precargado en schema `catalog`, no un entero libre; el singleton selecciona exactamente uno en operación normal.
 - `ClassGroup` pertenece a una combinación única de escuela, grado y año académico.
 - Un `TeacherContract` sin fecha de fin tiene un intervalo abierto. Los intervalos incluyen ambos extremos.
 - Toda superposición para el mismo docente y escuela se rechaza porque el MVP no contempla justificaciones; las superposiciones entre escuelas son válidas.
@@ -374,6 +402,7 @@ Las cinco preguntas municipales permanecen como objetivos de trazabilidad indepe
 - P0 precargará escuelas, años, grados, grupos, docentes y estados estrictamente necesarios para los tres recorridos. Subjects, TeachingAssignments, ClassSchedules, límites de reporte, empates y multiplicidad docente se agregan solo en la extensión P1.
 - La feature seguirá siendo una sola unidad principal; la planificación posterior distribuirá responsabilidades entre artefactos especializados trazables sin replicar fuentes de verdad y respetará unidades revisables de hasta 400 líneas modificadas.
 - El modelo relacional canónico alcanzará al menos 3NF y no almacenará agregados de reporte; cualquier estructura física redundante excepcional requerirá justificación basada en integridad y evidencia sin reemplazar la fuente normalizada.
+- La estrategia de entrega es `stacked-to-main`; cada slice depende de los ya integrados en `main`, y scaffold/migraciones generadas se revisan separados de lógica humana.
 
 ## Dependencias y riesgos
 

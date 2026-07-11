@@ -2,76 +2,82 @@
 
 ## Decisión
 
-El backend será un monolito modular REST en tres proyectos de producción. El repositorio `inovait-backend` es canónico para dominio, persistencia, OpenAPI y planificación de `database/setup.sql`; `inovait-frontend` permanece independiente y consume el contrato versionado.
+El backend será un monolito modular REST con tres proyectos de producción. El refactor ubica 14 tablas en `catalog`, `people`, `academic` y `staff`; `catalog.AcademicYear` es la única ubicación válida. No cambia el contrato HTTP canónico.
 
 ```text
 inovait-frontend
       │ HTTPS + camelCase JSON + ProblemDetails
       ▼
-Inovait.Api ──► Inovait.Core ◄── Inovait.Infrastructure ──► SQL Server
- Controllers    Domain/Features      EF/config/query stores
-      │                                      │
-      └──────── composition root/DI ─────────┘
+Inovait.Api ──► Inovait.Core ◄── Inovait.Infrastructure ──► SQL Server 2022
+ Controllers    Domain/Features      EF/config/interceptors
 ```
-
-## Límites de proyectos
 
 | Proyecto | Responsabilidad | No contiene |
 | --- | --- | --- |
-| `Inovait.Api` | Controllers, request/response DTOs, model binding, ProblemDetails, OpenAPI, CORS local, DI | entidades EF, reglas SQL, lógica de reportes |
-| `Inovait.Core` | Entidades, enums, normalización, edad, intervalos, estado efectivo y servicios/puertos por feature | ASP.NET, EF Core, SQL Server |
-| `Inovait.Infrastructure` | `DbContext`, configuraciones, migraciones, seeds, transacciones y consultas proyectadas | DTOs HTTP, controllers |
+| `Inovait.Api` | Controllers, DTOs, binding, ProblemDetails, OpenAPI, DI | entidades EF, reglas SQL |
+| `Inovait.Core` | entidades, roles, invariantes, casos de uso y puertos específicos | ASP.NET, EF, SQL Server |
+| `Inovait.Infrastructure` | DbContext, Fluent API, interceptors, migraciones, seeds, transacciones y queries | DTOs HTTP |
 
-Cuatro proyectos (`Api/Application/Domain/Infrastructure`) son correctos para un sistema mayor, pero separar Application y Domain deja capas pequeñas y aumenta referencias. Dos o uno mezclan límites o generan acoplamiento circular. Tres es el mínimo que conserva dependencia `Api → Core`, `Infrastructure → Core` y composición desde Api.
-
-## Organización por feature
+## Organización futura exacta
 
 ```text
-src/Inovait.Api/
-├── Features/{Catalogs,Enrollments,TeacherContracts,Reports}/
-│   ├── *Controller.cs
-│   └── Contracts/*.cs
-├── Errors/
-└── Program.cs
-src/Inovait.Core/
-├── Domain/{Catalogs,Enrollments,Teachers,Teaching}/
-└── Features/{Catalogs,Enrollments,TeacherContracts,Reports}/
-src/Inovait.Infrastructure/
-├── Persistence/{Configurations,Migrations,Seed}/
-└── Features/{Catalogs,Enrollments,TeacherContracts,Reports}/
+src/Inovait.Core/Domain/
+├── Catalogs/{School,AcademicYear,AcademicConfiguration,Grade,Subject,DocumentType}.cs
+├── People/{Person,Student,Teacher}.cs
+├── Academics/{ClassGroup,Enrollment,TeachingAssignment,ClassSchedule}.cs
+├── Staff/TeacherContract.cs
+└── Common/{ITextNormalizer,IAuditableEntity}.cs
+src/Inovait.Infrastructure/Persistence/
+├── InovaitDbContext.cs
+├── Configurations/<Entity>Configuration.cs
+├── Interceptors/{TextNormalizationInterceptor,AuditSaveChangesInterceptor}.cs
+├── Migrations/
+└── Seed/ProductionCatalogSeed.cs
 ```
 
-Cada feature expone un servicio de caso de uso y un puerto específico cuando necesita persistencia. No hay buses, handlers uno-a-uno, `Generic Repository` ni abstracciones CRUD.
+Una configuración Fluent por entidad declara schema/table, tipos, longitudes, `Latin1_General_100_CI_AS`, defaults, checks, claves/FK `NoAction`, índices/includes y `IsRowVersion()`. No hay `Generic Repository`, buses ni handlers uno-a-uno.
 
-## Flujo HTTP
+## Flujo de escritura
 
-1. Controller valida forma/tipos y recibe `CancellationToken`.
-2. Servicio Core normaliza identidad y valida invariantes puras.
-3. Puerto Infrastructure carga referencias y valida combinaciones.
-4. Escrituras P0 ejecutan una transacción async; lecturas usan proyección sin tracking.
-5. Excepciones de negocio tipadas se traducen centralmente a `ProblemDetails`; no se exponen trazas o SQL.
-6. Controller devuelve DTO, nunca entidad.
+1. Api valida forma y tipos y propaga `CancellationToken`.
+2. Core resuelve `DocumentType.Code`, valida referencias e invariantes.
+3. `TextNormalizationInterceptor` aplica NFC, trim y colapso de whitespace Unicode —incluidos tabs/newlines— a texto requerido; nunca crea columnas duplicadas de comparación.
+4. `AuditSaveChangesInterceptor` actualiza `UpdatedAtUtc` solo en entidades modificadas y preserva `CreatedAtUtc`; SQL aplica defaults en altas.
+5. EF emite `UPDATE` con PK+`RowVersion`; cero filas afectadas se traduce a conflicto de concurrencia.
+6. Escrituras atómicas confirman una única transacción; lecturas usan proyección no tracking.
+
+## Persona y roles
+
+`people.Person` contiene la identidad documental una sola vez. `people.Student.PersonId` y `people.Teacher.PersonId` son PK+FK independientes; una misma persona puede tener ambos roles. La unicidad CI_AS de `(DocumentTypeId, DocumentNumber)` es la defensa concurrente. La aplicación conserva diacríticos y no elimina puntuación.
+
+## Fronteras SQL y aplicación
+
+| Regla | SQL Server | Aplicación |
+| --- | --- | --- |
+| texto | `LEN(TRIM)>0` rechaza vacío/U+0020-only en SQL directo; collation y UNIQUE | NFC/trim y colapso/rechazo de whitespace Unicode antes de persistir |
+| códigos y `School.Sector` inmutables | triggers estrechos | setter restringido + `PropertySaveBehavior.Throw` |
+| año actual/referencias | PK+CHECK permiten máximo uno; seed, permisos y trigger evitan ausencia operativa; `DocumentType` tiene SELECT y DENY de INSERT/UPDATE/DELETE para runtime | singleton con cambio acotado de FK y fail-fast; `DocumentType` solo lectura |
+| cancelación | CHECK exige tres datos en `Cancelled` y nulos en `Confirmed` | transición y mensaje de negocio |
+| asignación | FK y rango local | misma escuela y período contenido en contrato/año, dentro de transacción |
+| contrato superpuesto | UNIQUE exacto | consulta indexada con aislamiento `Serializable` |
+
+Los triggers se limitan a cuatro protecciones de código/sector y a impedir delete del singleton. No se usan para normalizar texto, actualizar timestamps, solapamientos ni reglas entre tablas.
 
 ## Atomicidad y concurrencia
 
-- `createEnrollment`: una transacción resuelve/crea `Student` y crea `Enrollment`. Los índices únicos protegen identidad y año frente a carreras; colisiones se traducen a 409.
-- `createTeacherContracts`: valida toda la solicitud, abre transacción `Serializable`, consulta intervalos del docente/escuelas con índice de soporte, inserta todos o ninguno y confirma. Una escuela repetida se detecta antes de SQL.
-- Un trigger para superposiciones se rechaza: escondería lógica de aplicación, dificultaría pruebas y errores y no elimina la necesidad de validación previa. `CHECK` no puede comparar filas.
+- `createEnrollment`: resuelve/crea `Person` y rol `Student`, luego `Enrollment` en una transacción. El FK compuesto y los UNIQUE de identidad/año convierten carreras en `409`.
+- `createTeacherContracts`: valida toda la selección, usa `Serializable`, crea contratos independientes o ninguno.
+- `TeachingAssignment`: carga contrato, grupo y año con locking/transacción de escritura y valida escuela y contención temporal antes de insertar asignación y horarios.
+- `School`, `AcademicYear`, `Grade`, `ClassGroup`, `Person`, `Teacher`, `TeacherContract`, `Subject` y `TeachingAssignment` usan creación/actualización UTC y `rowversion`; `Enrollment` y `ClassSchedule` solo registran creación, y `DocumentType`, `Student`, `AcademicConfiguration` no reciben auditoría genérica ni rowversion.
 
-## Contrato y errores
+## Persistencia y despliegue
 
-`contracts/openapi.yaml` es la fuente canónica de diseño. Los diez YAML del bundle están versionados en el baseline `1223630ab99bf1bfaa4f5919fccf5ff539379c8e` con checksum combinado `802c13b91bf5c6425d24c540b6841a2abe134e084ea310fc2b7041e32c24a81a`. La puerta contractual está resuelta; apply sigue bloqueado únicamente por la estrategia de revisión o `size:exception` pendiente. El frontend deberá rechazar un checkout sucio o divergente del baseline. ASP.NET Core generará un documento para comprobar divergencias, pero no redefine rutas ni schemas. Todas las operaciones declaran `security: []`; no se registra autenticación.
+La cadena EF separa el scaffold generado (`InitialP0ProductionModel`/`AddP1TeachingModel`) de migrations manuales mínimos para triggers/permisos. Esa cadena y `database/setup.sql` deben producir los mismos schemas, tablas, tipos, collations, defaults, constraints, índices/includes, triggers, seeds y permisos, incluidos los DENY de `DocumentType`. La paridad se verifica mediante catálogos `sys.*`, no comparando texto SQL. P0 crea 11 tablas; P1 agrega `Subject`, `TeachingAssignment` y `ClassSchedule`.
 
-Para lecturas no existe una entidad adicional de “oferta académica”: cualquier School/Grade/AcademicYear existente es un contexto válido y la ausencia de ClassGroup devuelve vacío. Solo una escritura que suministra un ClassGroup ajeno al contexto produce `422`.
+## Contrato y seguridad
 
-## Estado contractual
+El bundle OpenAPI mantiene sus 15 `operationId`: el refactor cambia persistencia, no comportamiento HTTP aprobado. Los códigos de `DocumentType` se proyectan como `documentType`, por lo que no se expone `DocumentTypeId`. Connection strings llegan por entorno; seeds son ficticios; logging omite identidad documental. No hay autenticación, borrado histórico ni soft delete genérico.
 
-Persistido: `Confirmed|Cancelled`. Efectivo para fecha `d`: `Cancelled` si está cancelado; de lo contrario `Upcoming` si `d < StartDate`, `Expired` si `EndDate < d`, y `Effective` en otro caso. Para períodos, reportes filtran `Confirmed` e intersección inclusiva. Nunca se almacena “actual”. El valor predeterminado de “hoy” proviene de `IBusinessDateProvider.Today`, implementado con la fecha calendario UTC y reemplazable en pruebas; `asOfDate` explícito evita ambigüedad en evaluación.
+## Entrega
 
-## CORS, seguridad y datos
-
-CORS solo admite orígenes locales explícitos en configuración, métodos GET/POST y cabeceras necesarias; no usa comodín con credenciales. Connection strings llegan por variables de entorno. Logging estructurado omite documentos y valores sensibles. Todos los seeds son ficticios.
-
-## Entrega por prioridad
-
-P0 incluye infraestructura mínima, 8 tablas, cinco catálogos, inscripción, filtro conjunto, contratos multiescuela, `database/setup.sql`, pruebas críticas y guía del evaluador. P1 condicional agrega Subject, TeachingAssignment, ClassSchedule, `listSubjects`, reportes, historia y seeds especializados solo tras la puerta ejecutable. Quedan diferidos: paginación, CRUD administrativo, autenticación, UI OpenAPI de terceros, observabilidad avanzada y escalado distribuido.
+La estrategia aprobada es `stacked-to-main`: cada slice apunta a `main`, depende solo de slices ya integrados y mantiene ≤400 líneas humanas. Cada slice ejecuta antes de merge el gate determinista de additions+deletions definido en `tasks.md`; scaffold, lockfiles y migraciones generadas quedan antes de `HUMAN_BASE`. S03/S07/S12/S13 tienen fallbacks predefinidos y no existe `size:exception` aprobado. Pruebas y documentación permanecen con la conducta que verifican. P1 continúa bloqueado hasta la puerta P0.

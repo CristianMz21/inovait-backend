@@ -1,142 +1,148 @@
-# Plan de implementación: Gestión de inscripción escolar y contratación docente
+# Plan de implementación: gestión escolar con modelo de producción
 
-**Rama**: `main` | **Fecha**: 2026-07-10 | **Especificación**: [spec.md](./spec.md)
+**Rama**: `feat/production-data-model` | **Fecha**: 2026-07-10 | **Especificación**: [spec.md](./spec.md)
 
-**Entrada**: especificación en `specs/001-school-enrollment-management/spec.md`
+**Estado**: planificación actualizada y S01 materializado; S02–S18 permanecen pendientes. Esta actualización no autoriza commit, merge ni push.
 
-**Nota**: `/speckit-plan` completa esta planificación. No autoriza implementación.
+**Task set ejecutable**: `production-model-v2.0.0` (`V2-T001`–`V2-T103`). Los IDs históricos `T001`–`T076` del baseline v1 están supersedidos y no son válidos para ejecución actual; ver [task-id-supersession.md](../../docs/task-id-supersession.md).
 
 ## Resumen
 
-El compromiso de alcance de una jornada se limita a P0: inscripción atómica, consulta por School/Grade/AcademicYear y contratación docente multiescuela, junto con catálogos necesarios, SQL Server mínimo, pruebas críticas y walkthrough del evaluador. Su factibilidad es **de riesgo alto** y está condicionada a la ruta crítica operativa de ocho horas definida en [quickstart.md](./quickstart.md); no es una promesa incondicional ni evidencia de ejecución. P1 permanece completamente diseñado como extensión condicional posterior a evidencia P0. La solución futura usa tres proyectos de producción y dos de pruebas, sin CQRS, MediatR ni `Generic Repository`; hoy el repositorio contiene únicamente la planificación versionada en el baseline `1223630ab99bf1bfaa4f5919fccf5ff539379c8e`, sin scaffold ni implementación.
+El modelo futuro tendrá 14 tablas en cuatro schemas SQL Server. P0 continúa primero, pero ahora materializa 11 tablas para compartir identidad mediante `Person`, usar `DocumentType` y seleccionar el año actual con un singleton seguro. P1 sigue condicionado a la puerta P0 y agrega tres tablas. Se mantienen tres proyectos de producción, API sin cambios y consultas derivadas sin agregados.
 
 ## Contexto técnico
 
-**Lenguaje/versión**: C# 14, SDK .NET `10.0.109`, `net10.0`.
-
-**Dependencias principales**: ASP.NET Core `10.0.9`, `Microsoft.AspNetCore.OpenApi` `10.0.9`, EF Core SQL Server `10.0.9`; DI, `ProblemDetails` y logging integrados. Pruebas futuras: xUnit v3 `3.2.2`, `Microsoft.AspNetCore.Mvc.Testing` `10.0.9` y `Testcontainers.MsSql` `4.13.0`.
-
-**Persistencia**: SQL Server 2022 mediante EF Core; esquema 3NF, fechas de negocio `date`/`DateOnly`, restricciones e índices explícitos y borrados restrictivos.
-
-**Pruebas**: aún no existe runner. P0 planifica unitarias puras y pruebas HTTP/SQL Server con `WebApplicationFactory` y Testcontainers como ruta reproducible primaria. Una instancia externa aislada queda documentada solo como fallback, no como segunda puerta obligatoria. EF InMemory no demostrará SQL ni transacciones.
-
-**Plataforma objetivo**: Linux o Windows con .NET 10 SDK y SQL Server 2022 accesible; Docker compatible es requisito solo para la ruta Testcontainers.
-
-**Tipo de proyecto**: servicio web REST dentro de un monolito modular.
-
-**Objetivos de rendimiento**: recorridos P0 manuales en menos de 3 min. La latencia local se registra de forma informativa con una ejecución calentada por consulta P0, sin umbral ni puerta de release.
-
-**Restricciones**: MVP de una jornada, P0 antes de P1, sin autenticación, secretos ni datos reales; CORS limitado a orígenes locales configurados; async y `CancellationToken` de HTTP a EF; nullable habilitado; DTOs separados de entidades; transacciones explícitas para operaciones atómicas.
-
-**Escala/alcance**: una ciudad y volumen acotado sin paginación. P0 materializa 8 tablas y seeds mínimos; P1 puede extender a las 11 entidades ya diseñadas. Los reportes nunca almacenan agregados y el orden es determinista.
+- C# 14, SDK .NET `10.0.109`, `net10.0`; ASP.NET Core/EF Core SQL Server `10.0.9`.
+- SQL Server 2022; `date`/`DateOnly`, `datetime2(3)` UTC, `rowversion`, `Latin1_General_100_CI_AS`.
+- xUnit v3 `3.2.2`, `Microsoft.NET.Test.Sdk` `18.0.1`, runner Visual Studio `3.1.5` y `WebApplicationFactory` `10.0.9` ya materializados; `Testcontainers.MsSql` `4.13.0` comienza en S02.
+- Monolito modular con `Inovait.Api`, `Inovait.Core`, `Inovait.Infrastructure`; dos proyectos de pruebas.
+- Sin CQRS, MediatR, `Generic Repository`, autenticación, soft delete genérico ni columnas duplicadas para comparación.
 
 ## Control constitucional
 
-*PUERTA: DEBE aprobarse antes de investigación y repetirse después del diseño.*
-
-**Ejecución previa a investigación (2026-07-10)**: PASS. Esta tabla registra la puerta inicial sobre el enfoque propuesto; las referencias de diseño fueron verificadas nuevamente al cerrar Phase 1.
-
-| Control | Evidencia requerida | Estado |
+| Control | Evidencia | Estado |
 | --- | --- | --- |
-| P0 antes de P1 | US1-US3 forman el primer hito; US4-US7 quedan bloqueadas hasta validar P0 | PASS |
-| Simplicidad | Tres proyectos de producción; Controllers; sin patrones o capacidades prohibidas | PASS |
-| Integridad histórica | `Enrollment` y `TeacherContract` son tablas históricas; todas las FK usan `NO ACTION` | PASS |
-| Fechas | Todas las fechas de negocio son `date`/`DateOnly`; no se requieren timestamps técnicos | PASS |
-| Validación y errores | [data-model.md](./data-model.md) distribuye reglas y OpenAPI define `ProblemDetails` | PASS |
-| Trazabilidad | [requirements-traceability.md](../../docs/requirements-traceability.md) cubre REQ, SCN, BQ, operación, tabla, pantalla y prueba | PASS |
-| Contrato entre repositorios | [openapi.yaml](./contracts/openapi.yaml) es canónico y el impacto UI está identificado | PASS |
-| Pruebas por riesgo | [testing-strategy.md](../../docs/testing-strategy.md) cubre límites, atomicidad, SQL y reportes | PASS |
-| Accesibilidad | OpenAPI provee errores de campo y estados previsibles; la UI accesible queda en el frontend | PASS |
-| Entrega evaluable | [quickstart.md](./quickstart.md) y la tarea temprana de `docs/evaluator-execution.md` planifican setup, SQL P0, seeds y walkthrough | PASS |
-| Seguridad de datos | Todos los ejemplos y seeds planificados son ficticios; variables sin valores secretos | PASS |
+| P0 antes de P1 | 11 tablas P0 y US1–US3 antes de las tres tablas/reportes P1 | PASS |
+| Integridad histórica | roles PK+FK, Enrollment/Contract históricos, FK `NO ACTION` | PASS |
+| Fechas/auditoría | negocio en `date`; sellos exactos UTC solo donde se aprobaron | PASS |
+| Validación por frontera | SQL, EF y aplicación distribuidos sin garantías ficticias | PASS |
+| Trazabilidad | REQ-053–REQ-063 enlazados a diseño, pruebas y tareas | PASS |
+| Contrato canónico | 15 operationIds sin cambio observable | PASS |
+| Pruebas por riesgo | SQL Server real para collation, triggers, concurrencia e índices | PASS planificado |
+| Entrega evaluable | migración/setup con paridad y slices ≤400 líneas humanas | PASS planificado |
+| Seguridad | runtime con permisos mínimos; datos ficticios y sin secretos | PASS |
 
-Un `FAIL` bloquea el avance. Solo una excepción constitucional documentada puede continuar.
+Un `FAIL` bloquea apply. El control se repetirá tras P0 y antes de P1.
 
-## Estructura del proyecto
+## Modelo y schemas
 
-### Documentación de esta feature
+| Schema | P0 | P1 |
+| --- | --- | --- |
+| `catalog` | School, AcademicYear, AcademicConfiguration, Grade, DocumentType | Subject |
+| `people` | Person, Student, Teacher | — |
+| `academic` | ClassGroup, Enrollment | TeachingAssignment, ClassSchedule |
+| `staff` | TeacherContract | — |
+
+`catalog.AcademicYear` es autoritativo. `Student.PersonId` y `Teacher.PersonId` son PK+FK independientes. `Enrollment.AcademicYearId` se conserva como única dependencia controlada para `UNIQUE(StudentPersonId, AcademicYearId)` y queda cerrado por el FK compuesto soportado por `UQ_ClassGroup_Id_AcademicYear_ForEnrollment`.
+
+## Diseño EF Core exacto
+
+```text
+src/Inovait.Core/Domain/{Catalogs,People,Academics,Staff,Common}/
+src/Inovait.Infrastructure/Persistence/
+├── InovaitDbContext.cs
+├── Configurations/<Entity>Configuration.cs
+├── Interceptors/TextNormalizationInterceptor.cs
+├── Interceptors/AuditSaveChangesInterceptor.cs
+├── Seed/ProductionCatalogSeed.cs
+└── Migrations/
+```
+
+Cada `IEntityTypeConfiguration<T>` configura `ToTable(table,schema)`, PK/FK/UNIQUE con nombres exactos, `DeleteBehavior.NoAction`, tipos/longitudes, collation, defaults, checks, conversiones de enums string, índices/includes y `IsRowVersion`. `SchoolSector` y `TeacherContractStatus` se convierten a `varchar`; `DateOnly` a `date`; timestamps permanecen UTC.
+
+`TextNormalizationInterceptor` aplica NFC, trim y colapso del whitespace Unicode —incluidos tabs y saltos de línea— a todo texto requerido, y la validación rechaza el resultado vacío antes de persistir. `AuditSaveChangesInterceptor` fija `UpdatedAtUtc` en updates mediante `TimeProvider`; los defaults cubren inserts. La lista auditable exacta es `School`, `AcademicYear`, `Grade`, `ClassGroup`, `Person`, `Teacher`, `TeacherContract`, `Subject` y `TeachingAssignment`; `Enrollment`/`ClassSchedule` solo registran creación y `DocumentType`/`Student`/`AcademicConfiguration` no reciben auditoría genérica ni rowversion. Códigos estables y `School.Sector` usan setter restringido y `PropertySaveBehavior.Throw`.
+
+## SQL frente a aplicación
+
+| Invariante | SQL Server | EF/aplicación |
+| --- | --- | --- |
+| texto | collation, UNIQUE y `LEN(TRIM([Column])) > 0`, que rechaza vacío o solo U+0020 en SQL directo, no todo whitespace Unicode | NFC/trim y colapso/rechazo de whitespace Unicode, incluidos tabs/newlines, antes de persistir |
+| código/sector inmutable | cuatro triggers estrechos | save behavior throw |
+| singleton/referencias | PK+CHECK máximo uno; seed, permisos y trigger anti-delete; rol `[inovait_runtime]` con SELECT y DENY explícito de INSERT/UPDATE/DELETE sobre `DocumentType` | singleton sin insert/delete y fail-fast si falta; `DocumentType` solo lectura |
+| auditoría | defaults/check/rowversion | interceptor UpdatedAt y manejo de conflicto |
+| cancelación | CHECK all-or-none y fecha efectiva | transición Confirmed→Cancelled |
+| asignación | FK y rango propio | misma escuela y período contenido, en transacción |
+| solapamiento contractual | UNIQUE exacto | lectura indexada `Serializable` |
+
+No se usan triggers amplios para normalización, auditoría, solapamientos ni compatibilidad entre tablas.
+
+## Índices OLTP
+
+| Índice | Beneficio esperado |
+| --- | --- |
+| `UQ_Enrollment_StudentPersonId_AcademicYearId` | seek/defensa concurrente de inscripción anual |
+| `IX_Enrollment_ClassGroupId_StudentPersonId` INCLUDE `(AcademicYearId, CreatedAtUtc)` | join desde grupos filtrados; `Id` ya está disponible por la PK clustered |
+| `IX_TeacherContract_TeacherPersonId_StartDate_EndDate` INCLUDE `(SchoolId, Status, CancelledAtUtc, CancellationReason, CancellationEffectiveDate)` | lista e intersección por docente/fecha; `Id` implícito |
+| `IX_TeacherContract_SchoolId_StartDate_EndDate` INCLUDE `(TeacherPersonId, Status, CancellationEffectiveDate)` | lista por escuela y conteo de sector; `Id` implícito |
+| `IX_TeachingAssignment_ClassGroupId_StartDate_EndDate` INCLUDE `(TeacherContractId, SubjectId)` | historia por grupo y período; `Id` implícito |
+| `IX_TeachingAssignment_TeacherContractId_StartDate_EndDate` INCLUDE `(ClassGroupId, SubjectId)` | validación y navegación por contrato; `Id` implícito |
+
+`IX_ClassGroup_AcademicYearId_GradeId_SchoolId` incluye únicamente `Code`; su `Id` también llega por la PK clustered. PK/UNIQUE ya líderes cubren sus FK; solo se agregan índices mínimos para FK restantes. No se planifica índice filtrado contractual hasta que mediciones justifiquen un tercer árbol solapado.
+
+Esta cobertura asume que cada PK `Id` conserva el clustering predeterminado de SQL Server/EF. Si una PK pasa a nonclustered o cambia la clustered key, `data-model.md`, las proyecciones y `IT-INDEXES-P0/P1` deben re-evaluar todos los INCLUDE antes del merge que cambie el clustering.
+
+## `database/setup.sql` y paridad
+
+El script futuro trabajará sobre una base vacía: `XACT_ABORT`, `TRY/CATCH`, transacción, schemas, tablas en orden, collations, defaults, constraints, índices/includes, triggers, seeds ficticios, singleton y rol database `[inovait_runtime]` sin login/credenciales. Debe ejecutar `GRANT SELECT ON OBJECT::catalog.DocumentType TO [inovait_runtime]` y `DENY INSERT, UPDATE, DELETE ON OBJECT::catalog.DocumentType TO [inovait_runtime]`; la migración manual y setup expresan la misma política. No crea database ni login. EF separa el scaffold generado `InitialP0ProductionModel` del migration manual `AddP0DatabaseProtections`, que solo contiene triggers/permisos; P1 repite el patrón. La cadena completa debe producir los mismos objetos que setup.
+
+Las pruebas compararán `sys.schemas`, `sys.tables`, `sys.columns`, `sys.default_constraints`, `sys.check_constraints`, `sys.foreign_keys`, `sys.indexes`, `sys.index_columns`, `sys.triggers` y permisos. P0 espera 11 tablas; P1, 14.
+
+## Estructura de documentación
 
 ```text
 specs/001-school-enrollment-management/
+├── spec.md
 ├── plan.md
 ├── research.md
 ├── data-model.md
 ├── quickstart.md
 ├── tasks.md
-└── contracts/
-    ├── openapi.yaml
-    ├── paths/
-    └── components/
+└── contracts/                 # sin cambios en este refactor
+docs/{architecture,entity-relationship-model,testing-strategy,requirements-traceability}.md
 ```
 
-Los documentos transversales viven en `docs/architecture.md`, `docs/testing-strategy.md`, `docs/entity-relationship-model.md`, `docs/requirements-traceability.md` y `docs/assessment-baseline.md`. `docs/evaluator-execution.md` y `database/setup.sql` son entregables P0 futuros: sus tareas se ejecutan antes de la puerta P0; ninguno existe todavía.
+## Estrategia de entrega
 
-### Código fuente
+**Decisión**: `stacked-to-main`. Cada slice abre, en una fase posterior, un PR contra `main`, solo después de integrar su dependencia. No se crea ningún PR ahora. El presupuesto es ≤400 líneas humanas por slice; scaffold, lockfiles y migraciones generadas se aíslan antes de `HUMAN_BASE`. Cada S01–S18 fija tres SHAs inmutables: `SLICE_BASE`, `HUMAN_BASE` y `HUMAN_HEAD`; el gate suma additions+deletions exclusivamente de `HUMAN_BASE...HUMAN_HEAD` mediante `scripts/check-human-lines.py`. Un work unit documental posterior no altera esa evidencia. Un resultado >400 bloquea el slice y el siguiente salvo `size:exception` explícito. `EX-PLAN-2026-07-10` cubre solo el work unit separado de planificación documental ya aprobado; no exceptúa S01 ni la documentación de evidencia posterior.
 
-```text
-Inovait.slnx
-├── src/Inovait.Api/                 # Controllers, HTTP DTOs, ProblemDetails, DI
-├── src/Inovait.Core/                # Domain y Features por caso de uso
-├── src/Inovait.Infrastructure/      # EF Core, SQL Server, consultas y seeds
-├── tests/Inovait.UnitTests/         # Reglas puras
-└── tests/Inovait.IntegrationTests/  # WebApplicationFactory + SQL Server
-```
-
-**Decisión de estructura**: tres proyectos de producción. Separar cuatro (`Api/Application/Domain/Infrastructure`) añade referencias y capas con poco contenido para una jornada; uno o dos mezclan HTTP, dominio y EF o generan referencias circulares. `Inovait.Core` reúne Domain y Application en carpetas explícitas, mientras Infrastructure mantiene EF fuera del núcleo. [architecture.md](../../docs/architecture.md) conserva el análisis completo.
-
-## Trazabilidad de diseño
-
-La matriz canónica y exacta está en [requirements-traceability.md](../../docs/requirements-traceability.md); este plan no la duplica. Sus anclas son:
-
-| Prioridad | Historias | Modelo principal | Operaciones | Evidencia |
-| --- | --- | --- | --- | --- |
-| P0 | US1 | `Student`, `ClassGroup`, `Enrollment` | `createEnrollment` | UT-IDENTITY; IT-ENR-CREATE/IDENTITY/ANNUAL/CONTEXT |
-| P0 | US2 | `Enrollment` + catálogos | `listEnrollments` | UT-AGE; IT-ENR-FILTER |
-| P0 | US3 | `Teacher`, `TeacherContract`, `School` | `createTeacherContracts`, `listTeacherContracts`, `listTeachersBySchool` | UT-CONTRACT-*; IT-CON-* |
-| P1 | US4-US7 | Historia normalizada completa | `getAgeDistribution`, `getDistinctTeacherCountsBySector`, `getTopSchoolsByEnrollment`, `getStudentHistory` | IT-RPT-*; IT-HISTORY |
-
-Para listas y reportes, cualquier trío de referencias existentes School/Grade/AcademicYear es consultable. No se agrega tabla de oferta académica: la ausencia de `ClassGroup` produce `200 []` o conteos cero. `422` se reserva para reglas semánticas reales, como un `ClassGroup` suministrado al alta que no pertenece al contexto elegido.
-
-## Impacto entre repositorios
-
-| Decisión compartida | Backend canónico | Acción en `inovait-frontend` | Compatibilidad/versión |
+| Slice | Resultado autónomo | Dependencia | Verificación futura |
 | --- | --- | --- | --- |
-| Identificadores y JSON | Schemas camelCase de OpenAPI | Generar/adaptar modelos sin renombrar conceptos | OpenAPI `1.0.0` |
-| Errores | `ProblemDetails` con `code` y `errors` | Asociar errores a campos y anunciarlos accesiblemente | HTTP 400/404/409/422 según operación |
-| Catálogos | operaciones `list*` | Poblar selectores y respetar orden recibido | Sin CRUD administrativo |
-| P0 | operaciones de inscripción y contratos | Pantallas FE-S01 a FE-S04 | Sin autenticación; `security: []` |
-| P1 | cuatro capacidades de reporte | FE-S05 y FE-S06 | BQ-001/002 comparten respuesta |
+| S01 | solución de tres proyectos y test harness HTTP; salida de scaffold aislada | planificación | materializado; gate por SHAs pendiente hasta crear commits |
+| S02 | normalizador, auditoría/concurrencia y convenciones relacionales | S01 | unitarias + modelo EF |
+| S03 | cinco tablas de catálogo P0, singleton, checks y save behavior | S02 | tres evidencias parciales ejecutables solo contra las cinco tablas; sin acreditar triggers/permisos |
+| S04 | `Person` y roles duales | S03 | NFC/collation/roles/concurrencia |
+| S05 | `ClassGroup`/`Enrollment` y unicidad anual | S04 | FK compuesto/3NF/índices |
+| S06 | `TeacherContract` y cancelación/solapamiento | S04 | checks/Serializable/índices |
+| S07 | migración P0 generada aislada + migration de protecciones SQL separado | S03–S06 | aplicar cadena a SQL Server limpio y ejecutar evidencia completa de 11 tablas, triggers, singleton y permisos después de V2-T045 |
+| S08–S11 | catálogos/API, US1, US2 y US3 | S07, en orden | tests HTTP por capacidad |
+| S12 | `database/setup.sql`, paridad y walkthrough P0 | S08–S11 | manifest exacto de 37 IDs, ejecución completa y puerta P0 |
+| S13 | modelo/migración P1 y `listSubjects` end-to-end, generado aislado | puerta P0 | 14 tablas + prueba HTTP con orden `name, code, id` |
+| S14–S17 | una capacidad P1 por slice | S13 | BQ aislada |
+| S18 | hardening y entrega | aplicables | suite y walkthrough |
 
-La planificación frontend está sincronizada para contenido de planificación: define 49 tareas —P0 T001–T035, P1 T036–T047 y cierre T048–T049—, 13 consumidores runtime y conserva `listSubjects` y `listTeachersBySchool` como contract-only; `SCN-035` permanece backend-only. No queda sincronización documental pendiente. El contrato es reproducible desde el baseline versionado descrito a continuación.
+**Primer slice autónomo**: S01. Inicio: repositorio solo con planificación. Estado actual: la estructura de tres proyectos y dos proyectos de pruebas compila, el runner base ejecuta y no existe dominio ni migración. El manifest generado está en `docs/generated-manifests/s01.txt`: enumera las 16 rutas producidas por los comandos de scaffold, incluidas plantillas que después se modifican o eliminan. El commit generado conserva esas plantillas sin personalización; todo delta posterior —ediciones, altas y bajas— se cuenta en `HUMAN_BASE...HUMAN_HEAD`. El gate por SHAs se ejecuta después de crear los commits autorizados; rollback elimina únicamente la solución recién creada.
 
-### Reproducibilidad del contrato
+**Fallbacks predefinidos**: S03 se divide en tablas/configuración de catálogos y seed/startup check con evidencia parcial; no acredita triggers ni permisos. S07 se divide en migration generada, protecciones manuales y verificación completa posterior a V2-T045; S12 en setup, paridad/índices/permisos y runner/gate; S13 en modelo P1, migraciones/paridad y `listSubjects` end-to-end. Cada hijo conserva su propio manifest, `HUMAN_BASE`, gate ≤400 y rollback. No se improvisa una excepción para evitar la división.
 
-Los diez YAML del bundle OpenAPI están versionados en el baseline autorizado `1223630ab99bf1bfaa4f5919fccf5ff539379c8e`. El checksum combinado, en el orden documentado en quickstart, permanece en `802c13b91bf5c6425d24c540b6841a2abe134e084ea310fc2b7041e32c24a81a`. La verificación frontend deberá fallar si los archivos dejan de estar versionados, el checkout está sucio o el contenido no coincide con ese baseline. Esta actualización documental no modifica el bundle ni crea otro commit.
+## Puertas
 
-### Puertas pre-apply
+1. **Pre-apply**: branch correcta, checkout sin implementación accidental, estrategia `stacked-to-main` registrada y primer slice ≤400 líneas humanas.
+2. **P0**: 11 tablas, paridad migración/setup, US1–US3, manifest exacto de 37 IDs sin faltantes, suite `Priority=P0` ejecutada y walkthrough reproducible.
+3. **P1**: solo después de evidencia P0; agrega tres tablas y cuatro capacidades.
 
-1. **Contrato — resuelta**: el baseline `1223630ab99bf1bfaa4f5919fccf5ff539379c8e` versiona los diez YAML y registra el checksum aprobado `802c13b91bf5c6425d24c540b6841a2abe134e084ea310fc2b7041e32c24a81a`.
-2. **Presupuesto de revisión**: la estrategia cacheada es `ask-on-risk`; antes del scaffold debe elegirse una cadena de PRs o aprobar una `size:exception` limitada a scaffold/migración/lockfiles generados. Mientras siga pendiente no se afirma “cero excepciones”.
+## Riesgos
 
-## Seguimiento de complejidad
-
-La redundancia controlada `Enrollment.AcademicYearId` es una decisión de integridad admitida por REQ-052, no una excepción: el FK compuesto impide divergencia y permite unicidad concurrente anual. La estrategia de entrega y cualquier excepción para archivos generados permanecen pendientes y bloquean apply; no son excepciones aprobadas.
-
-## Control constitucional posterior al diseño
-
-**Resultado**: PASS técnico con el baseline contractual resuelto y condicionado por una decisión pre-apply pendiente: la estrategia de revisión. El diseño mantiene P0 antes de P1, 3NF mínima, borrados restrictivos, OpenAPI canónico y Testcontainers; la decisión pendiente no autoriza scaffold ni implementación.
-
-## Hitos y compromiso
-
-### Condiciones del pronóstico diario
-
-La ruta crítica P0 solo se considera operativa si la planificación y la puerta pendiente de estrategia de revisión están aprobadas antes de iniciar el reloj, SDK .NET, Node y Docker están listos, y una sola persona operadora trabaja con Codex/CLI sin interrupciones. El baseline contractual ya está resuelto. P1 queda excluido. Los siete timeboxes, sus tareas y los cortes obligatorios de mitad de jornada y de la última hora están en [quickstart.md](./quickstart.md), como única fuente del horario.
-
-Si el avance no cabe, solo puede retirarse hardening P0 no esencial —por ejemplo, observación de latencia, refactor cosmético o casos redundantes que no cubran un riesgo nuevo—. No se recorta ningún entregable original requerido, `database/setup.sql` ni una prueba crítica de integridad; si aun así no cabe, se declara incumplido el objetivo diario en lugar de prometer una entrega incompleta.
-
-| Hito | Esencial | Diferible sin romper P0 |
-| --- | --- | --- |
-| Pre-apply | baseline `1223630ab99bf1bfaa4f5919fccf5ff539379c8e` resuelto; decisión de revisión pendiente | nada: la puerta de revisión aún bloquea scaffold |
-| Base P0 | scaffold, 8 tablas, migración P0, Testcontainers, `ProblemDetails`, cinco catálogos y seeds mínimos | Subject/TeachingAssignment/ClassSchedule y seeds de reportes |
-| P0 comprometido | US1-US3 end-to-end, `database/setup.sql` mínimo, pruebas con trait P0, runner con conteo mínimo, README y walkthrough | toda conducta P1 |
-| P1 condicional | cuatro consultas para BQ-001–BQ-005, tres tablas restantes, seeds y pruebas P1 | paginación, CRUD, autenticación y observabilidad avanzada |
+- Los triggers y permisos no forman parte completa del modelo relacional EF; deben versionarse en migración y probarse contra `setup.sql`.
+- `Serializable` reduce carreras de solapamiento, pero requiere índices correctos y retry/mapeo de deadlock.
+- La única tabla no BCNF, `Enrollment`, exige mantener siempre el FK compuesto; quitarlo convertiría `AcademicYearId` en segunda fuente de verdad.
+- El presupuesto de una jornada sigue siendo de riesgo alto; el mayor modelo no autoriza recortar `database/setup.sql`, concurrencia ni la puerta P0.
