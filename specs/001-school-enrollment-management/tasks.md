@@ -88,7 +88,7 @@ Fallbacks definidos antes de apply, cada sub-slice sujeto al mismo gate:
 - [x] V2-T007 Agregar solo dependencias aprobadas y versiones fijadas en los cinco `*.csproj`; **Dep.** V2-T005; **Criterio** lockfiles, si se generan, quedan antes de `HUMAN_BASE` y en el manifest.
 - [x] V2-T008 Configurar `.editorconfig`, `.gitignore` y settings sin secretos en la raíz y `src/Inovait.Api/appsettings*.json`; **Dep.** V2-T005.
 - [x] V2-T009 Crear smoke tests base en `tests/Inovait.UnitTests/SmokeTests.cs` y `tests/Inovait.IntegrationTests/SmokeTests.cs`; **Dep.** V2-T006–V2-T008.
-- [ ] V2-T010 Validar S01 con restore/build/format/test, ejecutar el gate humano obligatorio y registrar `SLICE_BASE`, `HUMAN_BASE`, `HUMAN_HEAD`, manifest y conteo en `docs/evaluator-execution.md`; **Dep.** V2-T009; **Estado** comandos técnicos y contratos sintéticos validados, pero el gate real queda pendiente hasta que existan los tres commits/SHAs que esta tarea prohíbe crear; **Criterio** completar solo con SHAs reales y conteo ≤400, o bloquear sin excepción S01.
+- [x] V2-T010 Validar S01 con restore/build/format/test, ejecutar el gate humano obligatorio y registrar `SLICE_BASE`, `HUMAN_BASE`, `HUMAN_HEAD`, manifest y conteo en `docs/evaluator-execution.md`; **Dep.** V2-T009; **Estado** PASS con `SLICE_BASE=757b552ca3215371c0006d39bf0d0a14fabfdc11`, `HUMAN_BASE=dbcdaf7628c1e4dffd89a7c92f4513e2c4c1df47`, `HUMAN_HEAD=5dc32432d489eb342fed0221ff6b545036727b75`, manifest exacto y salida del gate `360`; restore, build/test Debug+Release, format, vulnerabilidades, diff y contrato OpenAPI en PASS; **Criterio** cumplido con conteo ≤400 y sin excepción S01.
 
 ## Fase 2 / S02: convenciones de persistencia
 

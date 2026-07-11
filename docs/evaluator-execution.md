@@ -64,28 +64,37 @@ La salida esperada incluye `401` y `human gate failed: 401 > 400`; el último `t
 
 | Unidad | `SLICE_BASE` | `HUMAN_BASE` | `HUMAN_HEAD` | Estado |
 | --- | --- | --- | --- | --- |
-| Planificación (`EX-PLAN-2026-07-10`) | `1223630ab99bf1bfaa4f5919fccf5ff539379c8e` | N/A | `<PLANNING_DOC_SHA>` | Excepción aprobada solo para este work unit documental; no es un PASS del gate S01. |
-| S01 | `<PLANNING_DOC_SHA>` | `<GENERATED_SCAFFOLD_SHA>` | `<S01_HUMAN_SHA>` | PENDIENTE: reemplazar placeholders únicamente después de crear los commits y ejecutar el gate real. |
+| Planificación (`EX-PLAN-2026-07-10`) | `1223630ab99bf1bfaa4f5919fccf5ff539379c8e` | N/A | `757b552ca3215371c0006d39bf0d0a14fabfdc11` | Excepción aprobada solo para este work unit documental; no es un PASS del gate S01. |
+| S01 | `757b552ca3215371c0006d39bf0d0a14fabfdc11` | `dbcdaf7628c1e4dffd89a7c92f4513e2c4c1df47` | `5dc32432d489eb342fed0221ff6b545036727b75` | PASS: manifest exacto y 360 líneas humanas, dentro del límite de 400. |
 
-### Secuencia exacta propuesta (todavía no ejecutada)
+### Secuencia exacta ejecutada
 
-1. `docs: finalize production model plan`: archivos de planificación ya modificados bajo `.atl/`, `.specify/memory/`, `README.md`, `docs/` y `specs/`; incluye este documento y el manifest S01. Es el único work unit cubierto por `EX-PLAN-2026-07-10`. Verificar `git diff --check` y la igualdad OpenAPI antes de fijar `<PLANNING_DOC_SHA>`.
-2. `chore: add generated .NET scaffold`: solo las 16 rutas de `docs/generated-manifests/s01.txt`, en el estado producido por `dotnet new`/`dotnet sln add`, sin referencias, paquetes ni personalización. Fijar `<GENERATED_SCAFFOLD_SHA>` y comprobar igualdad exacta del manifest.
-3. `feat: customize S01 scaffold and smoke harness`: `.editorconfig`, `.gitignore`, `scripts/check-human-lines.py`, los deltas humanos de `*.csproj`, host/settings/HTTP templates, eliminaciones de `Class1.cs`/`UnitTest1.cs`, `SmokeTests.cs` y `HumanLineGateTests.cs`. Fijar `<S01_HUMAN_SHA>`, ejecutar la puerta técnica y medir únicamente `<GENERATED_SCAFFOLD_SHA>...<S01_HUMAN_SHA>`.
-4. `docs: record S01 gate evidence`: solo `docs/evaluator-execution.md` y `specs/001-school-enrollment-management/tasks.md`, después de sustituir los tres placeholders con SHAs reales, copiar salidas verificadas y marcar V2-T010. Es un work unit documental normal y acotado; no usa `EX-PLAN-2026-07-10` y no altera `HUMAN_HEAD`.
+1. `docs: finalize production model plan` (`757b552ca3215371c0006d39bf0d0a14fabfdc11`): archivos de planificación bajo `.atl/`, `.specify/memory/`, `README.md`, `docs/` y `specs/`, incluido este documento y el manifest S01. Es el único work unit cubierto por `EX-PLAN-2026-07-10`.
+2. `chore: add generated .NET scaffold` (`dbcdaf7628c1e4dffd89a7c92f4513e2c4c1df47`): solo las 16 rutas de `docs/generated-manifests/s01.txt`, en el estado producido por el SDK .NET `10.0.109` con `dotnet new`/`dotnet sln add`; el diff del manifest no produjo salida.
+3. `feat: customize S01 scaffold and smoke harness` (`5dc32432d489eb342fed0221ff6b545036727b75`): `.editorconfig`, `.gitignore`, `scripts/check-human-lines.py`, deltas humanos de templates, eliminaciones de placeholders y pruebas smoke/HTTP/gate. El rango humano inmutable produjo exactamente `360`.
+4. `docs: record S01 gate evidence`: solo este documento y `tasks.md`; registra evidencia sin mover `HUMAN_HEAD` y no usa `EX-PLAN-2026-07-10`.
 
-### Plantilla de evidencia V2-T010
+### Evidencia V2-T010
 
 ```text
-SLICE_BASE=<PLANNING_DOC_SHA>
-HUMAN_BASE=<GENERATED_SCAFFOLD_SHA>
-HUMAN_HEAD=<S01_HUMAN_SHA>
+SLICE_BASE=757b552ca3215371c0006d39bf0d0a14fabfdc11
+HUMAN_BASE=dbcdaf7628c1e4dffd89a7c92f4513e2c4c1df47
+HUMAN_HEAD=5dc32432d489eb342fed0221ff6b545036727b75
 GENERATED_MANIFEST=docs/generated-manifests/s01.txt
-generated manifest diff=<PENDING PASS/FAIL>
-human additions+deletions=<PENDING INTEGER>
-restore/build Debug+Release/test Debug+Release/format/vulnerabilities/diff=<PENDING>
-OpenAPI tree/checksum=<PENDING>
-V2-T010=<PENDING; MUST REMAIN UNCHECKED WITHOUT REAL SHAS>
+generated manifest diff=PASS (exactly 16 paths; no diff output)
+human additions+deletions=360
+human gate output=360
+restore=PASS
+build Debug=PASS (0 warnings, 0 errors)
+build Release=PASS (0 warnings, 0 errors)
+test Debug=PASS (6 unit, 2 integration, 0 failed, 0 skipped)
+test Release=PASS (6 unit, 2 integration, 0 failed, 0 skipped)
+format verify=PASS
+vulnerable package scan=PASS (0 vulnerable packages in 5 projects)
+git diff --check=PASS
+OpenAPI tree=PASS (no diff or untracked contract files)
+OpenAPI checksum=802c13b91bf5c6425d24c540b6841a2abe134e084ea310fc2b7041e32c24a81a  -
+V2-T010=PASS
 ```
 
 ## Evidencia y rollback por slice
@@ -118,9 +127,10 @@ dotnet list package --vulnerable --include-transitive
 - `dotnet list package --vulnerable --include-transitive`: PASS, ningún paquete vulnerable en los cinco proyectos.
 - `git diff --check`: PASS.
 - Contrato automatizado/sintético: 400 devuelve `0`; 401 devuelve `1`; entrada malformada, no entera o binaria devuelve `2`. Los cinco casos están automatizados en `HumanLineGateTests.cs` y también fueron ejecutados manualmente.
-- Reconstrucción local previa a commits: las 16 plantillas exactas del manifest seguidas por la personalización actual producen 360 líneas humanas. Es una comprobación preparatoria, no un PASS de V2-T010 ni un sustituto de los tres SHAs reales.
+- Manifest generado: PASS; `SLICE_BASE..HUMAN_BASE` contiene exactamente las 16 rutas declaradas y `diff -u` no produjo salida.
+- Gate S01 inmutable: `git diff --numstat "dbcdaf7628c1e4dffd89a7c92f4513e2c4c1df47"..."5dc32432d489eb342fed0221ff6b545036727b75" -- | ./scripts/check-human-lines.py` devolvió estado `0` y salida exacta `360`.
 - Contrato canónico: árbol sin diferencias/untracked y checksum combinado `802c13b91bf5c6425d24c540b6841a2abe134e084ea310fc2b7041e32c24a81a`.
-- Gate S01 por SHAs: PENDIENTE; requiere los commits aislados que esta ejecución no está autorizada a crear.
+- Gate S01 por SHAs: PASS; V2-T010 completada con 360 líneas humanas, sin excepción de tamaño.
 
 ## Notas operativas
 
