@@ -132,6 +132,24 @@ dotnet list package --vulnerable --include-transitive
 - Contrato canónico: árbol sin diferencias/untracked y checksum combinado `802c13b91bf5c6425d24c540b6841a2abe134e084ea310fc2b7041e32c24a81a`.
 - Gate S01 por SHAs: PASS; V2-T010 completada con 360 líneas humanas, sin excepción de tamaño.
 
+## Evidencia técnica candidata S02 — 2026-07-11
+
+- Base limpia comprobada: `SLICE_BASE=HUMAN_BASE=1d627eba7acc46aed404e5d4bd818766a855adbb`; no existe salida generada ni manifest S02.
+- `HUMAN_HEAD=N/A`: la ejecución fue solicitada sin commits. Según la regla de las líneas 28–35, esta evidencia de worktree no puede cerrar V2-T019 ni declararse gate inmutable.
+- Testcontainers descargó y ejecutó `mcr.microsoft.com/mssql/server:2022-CU14-ubuntu-22.04`; el fixture no usó el fallback externo.
+- Casos relacionales ejecutados: `ProductionRegistrations_ResolveAndConnectToSqlServer` y `ProbeModel_UsesDefaultsCheckRealUpdatesAndRowVersion`.
+- El probe propiedad del test comprobó defaults SQL UTC, CHECK mediante error 547, update real con preservación de creación, normalización y conflicto `DbUpdateConcurrencyException` por `rowversion`.
+- Los casos relacionales pertenecen a `Priority=P0` pero deliberadamente no publican un ID `Evidence`: S02 no acredita prematuramente `IT-AUDIT-UTC-P0/P1` ni `IT-ROWVERSION-P0/P1`.
+- `dotnet restore`: PASS.
+- Build Debug y Release: PASS, cero warnings y cero errores.
+- Tests Debug y Release: PASS en cada configuración; 22 unitarios + 5 integración, cero fallos y cero omitidos.
+- Filtro `Priority=P0`: PASS; 16 unitarios + 3 integración, incluidos los dos casos relacionales reales.
+- `dotnet format --verify-no-changes --no-restore`: PASS.
+- `dotnet list package --vulnerable --include-transitive`: PASS, cero paquetes vulnerables en cinco proyectos.
+- Diff sintético con archivos untracked incluido: PASS.
+- Gate candidato desde `1d627eb`: 253 additions+deletions, dentro del límite de 400 y sin excepción.
+- V2-T017 y V2-T018: PASS. V2-T019: BLOCKED hasta fijar un `HUMAN_HEAD` inmutable autorizado y repetir el comando canónico.
+
 ## Notas operativas
 
 - No usar secretos dentro de repositorio.
