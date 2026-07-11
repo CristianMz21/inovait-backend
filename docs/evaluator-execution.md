@@ -79,6 +79,7 @@ La salida esperada incluye `401` y `human gate failed: 401 > 400`; el último `t
 | S08 (V2-T047–V2-T051) | `1f2c246bce3b8e08c3dddb7ee36a284a9a5682eb` | `1f2c246bce3b8e08c3dddb7ee36a284a9a5682eb` | `dbf431ecadf4733160b8dba00638bde794c18e0d` | PASS con dispensa `EX-INTEGRITY-2026-07-11`: sin salida generada/manifest; gate humano inmutable mide `1976` líneas humanas (bundle `50ba6ed` aislado: 1556), supera 400; registrado por reconciliación S08–S11 autorizada por el usuario (completitud sobre tamaño de slice); S08 cerrado. |
 | S09 (V2-T052–V2-T057) | `86678088959216952592203345ba016d6356ceba` | `86678088959216952592203345ba016d6356ceba` | `5bb861ec9b228f102c16459038748166f5481f94` | PASS: sin salida generada, 365 líneas humanas, dentro del límite sin excepción; S09 cerrado. |
 | S10 (V2-T058–V2-T061) | `52cbb518f5f47aee8fda12e097cdbfb83f97bfb4` | `52cbb518f5f47aee8fda12e097cdbfb83f97bfb4` | `3212b4ee2f1ec4070fdb1b70d6ee823483fd5b57` | PASS: sin salida generada, 99 líneas humanas, dentro del límite sin excepción; S10 cerrado. |
+| S11 (V2-T062–V2-T067) | `5eb43965448010d6ee86acbed9ff7133738f9e82` | `5eb43965448010d6ee86acbed9ff7133738f9e82` | `21833491b5df294e776ad7439a8a06c5143d08c9` | PASS: sin salida generada, 274 líneas humanas, dentro del límite sin excepción; S11 cerrado. |
 
 ### Secuencia exacta ejecutada
 
@@ -298,6 +299,20 @@ dotnet list package --vulnerable --include-transitive
 - OpenSpec strict/show/status, `gentle-ai sdd-status` y drift de 103 task lines: PASS, 61/103 completas y V2-T062 primera pendiente.
 - Gate humano inmutable `git diff --numstat 52cbb518f5f47aee8fda12e097cdbfb83f97bfb4...3212b4ee2f1ec4070fdb1b70d6ee823483fd5b57 -- | ./scripts/check-human-lines.py`: PASS, salida exacta `99`, dentro del límite de 400 y sin excepción.
 - V2-T058–V2-T061: PASS. S10 cerrado; V2-T062 inicia S11.
+
+## Evidencia técnica S11 contratos multiescuela — 2026-07-11
+
+- `SLICE_BASE=HUMAN_BASE=5eb43965448010d6ee86acbed9ff7133738f9e82`; `HUMAN_HEAD=21833491b5df294e776ad7439a8a06c5143d08c9`; sin salida generada.
+- Composición: un solo commit `2183349` (test: cover teacher contract date ranges and concurrency races), 274 líneas humanas — `TeacherContractConcurrencyTests.cs` nuevo (131 líneas, 2 facts) y `TeacherContractEndpointsTests.cs` ampliado con `IT-CON-DATES` (143 líneas, 4 facts nuevos sobre el archivo ya existente del bundle `50ba6ed`).
+- Fixture: Testcontainers con imagen fijada `mcr.microsoft.com/mssql/server:2022-CU14-ubuntu-22.04`; `ConnectionStrings__InovaitTest` explícitamente ausente del entorno.
+- Targeted `Evidence=IT-CON-MULTI|Evidence=IT-CON-DATES|Evidence=IT-CON-LIST|Evidence=IT-PROBLEMS|Evidence=IT-OPENAPI-P0|FullyQualifiedName~TeacherContractConcurrency`: 19/19 PASS — `IT-CON-MULTI` 1/1, `IT-CON-LIST` 1/1, `IT-CON-DATES` 4/4 (rango+abierto multiescuela, 422 `invalid_date_range`+400 `invalid_request` sin persistir, 404 teacher/school sin persistir, lote multiescuela con ítem inválido sin resultados parciales), `IT-PROBLEMS` 10/10 (9 en `InvalidRequestTests.cs` + 1 en `P0OpenApiTests.cs`), `IT-OPENAPI-P0` 1/1, `TeacherContractConcurrencyTests` (sin Evidence ID, filtrado por FQN) 2/2.
+- Filtro `Priority=P0`: 80 unitarias + 66 integración = 146/146 PASS.
+- Suites Debug y Release completas: 86 unitarias + 70 integración = 156/156 en cada configuración; cero fallos/omitidas.
+- `dotnet restore`: PASS. Builds Debug y Release: PASS, cero warnings y cero errores. `dotnet format --verify-no-changes --no-restore`: PASS. `dotnet list package --vulnerable --include-transitive`: PASS, cero paquetes vulnerables en cinco proyectos. `git status --porcelain -- specs`: PASS, sin diferencias. Árbol OpenAPI y checksum `802c13b91bf5c6425d24c540b6841a2abe134e084ea310fc2b7041e32c24a81a`: PASS (tree byte-idéntico desde `8aa8097`).
+- OpenSpec strict/show/status, `gentle-ai sdd-status` y drift de 103 task lines: PASS, 67/103 completas y V2-T068 primera pendiente.
+- Gate humano inmutable `git diff --numstat 5eb43965448010d6ee86acbed9ff7133738f9e82...21833491b5df294e776ad7439a8a06c5143d08c9 -- | ./scripts/check-human-lines.py`: PASS, salida exacta `274`, dentro del límite de 400 y sin excepción.
+- Nota honesta: el path de conflicto rowversion puro (`DbUpdateConcurrencyException`) no es alcanzable por HTTP en esta etapa (solo existen create+list); la evidencia de `TeacherContractConcurrencyTests.cs` cubre el mapeo 409 por la maquinaria de reintentos SERIALIZABLE de `EfTeacherContractWorkflow`, que produce el mismo mapeo ProblemDetails. El manifest P0 de `docs/testing-strategy.md` no asigna Evidence ID a V2-T063.
+- V2-T062–V2-T067: PASS. S11 cerrado; V2-T068 inicia S12.
 
 ## Notas operativas
 
