@@ -1,8 +1,8 @@
 # Plan de implementación: gestión escolar con modelo de producción
 
-**Rama**: `feat/production-data-model` | **Fecha**: 2026-07-10 | **Especificación**: [spec.md](./spec.md)
+**Rama de planificación**: `feat/production-data-model` | **Ejecución local actual**: `main` | **Fecha**: 2026-07-10 | **Especificación**: [spec.md](./spec.md)
 
-**Estado**: planificación actualizada y S01 materializado; S02–S18 permanecen pendientes. Esta actualización no autoriza commit, merge ni push.
+**Estado**: S01 y S02 completos; S03A parcial hasta `034ddc7`. V2-T021/V2-T022 están completos, V2-T020/V2-T023 permanecen parciales y V2-T024–V2-T103 pendientes. No existen migraciones ni `database/setup.sql`. Esta actualización documental no autoriza commit, merge ni push.
 
 **Task set ejecutable**: `production-model-v2.0.0` (`V2-T001`–`V2-T103`). Los IDs históricos `T001`–`T076` del baseline v1 están supersedidos y no son válidos para ejecución actual; ver [task-id-supersession.md](../../docs/task-id-supersession.md).
 
@@ -14,7 +14,7 @@ El modelo futuro tendrá 14 tablas en cuatro schemas SQL Server. P0 continúa pr
 
 - C# 14, SDK .NET `10.0.109`, `net10.0`; ASP.NET Core/EF Core SQL Server `10.0.9`.
 - SQL Server 2022; `date`/`DateOnly`, `datetime2(3)` UTC, `rowversion`, `Latin1_General_100_CI_AS`.
-- xUnit v3 `3.2.2`, `Microsoft.NET.Test.Sdk` `18.0.1`, runner Visual Studio `3.1.5` y `WebApplicationFactory` `10.0.9` ya materializados; `Testcontainers.MsSql` `4.13.0` comienza en S02.
+- xUnit v3 `3.2.2`, `Microsoft.NET.Test.Sdk` `18.0.1`, runner Visual Studio `3.1.5`, `WebApplicationFactory` `10.0.9` y `Testcontainers.MsSql` `4.13.0` ya materializados; S02 validó SQL Server real.
 - Monolito modular con `Inovait.Api`, `Inovait.Core`, `Inovait.Infrastructure`; dos proyectos de pruebas.
 - Sin CQRS, MediatR, `Generic Repository`, autenticación, soft delete genérico ni columnas duplicadas para comparación.
 
@@ -97,6 +97,12 @@ El script futuro trabajará sobre una base vacía: `XACT_ABORT`, `TRY/CATCH`, tr
 
 Las pruebas compararán `sys.schemas`, `sys.tables`, `sys.columns`, `sys.default_constraints`, `sys.check_constraints`, `sys.foreign_keys`, `sys.indexes`, `sys.index_columns`, `sys.triggers` y permisos. P0 espera 11 tablas; P1, 14.
 
+## Ejecución local de SQL Server
+
+Las pruebas de integración conservan como puerta relacional primaria el fixture efímero existente: `MsSqlBuilder("mcr.microsoft.com/mssql/server:2022-CU14-ubuntu-22.04")`, start/dispose administrado por xUnit y connection string autogenerada. Después del startup pueden aplicarse migraciones o scripts. El `TrustServerCertificate=True` generado para el certificado autofirmado local queda limitado a Testcontainers.
+
+Para desarrollo de la API y evaluación local, V2-T072 entregará `compose.yaml` con la misma imagen oficial fijada de SQL Server 2022, `ACCEPT_EULA=Y`, `MSSQL_SA_PASSWORD` suministrado fuera de Git, publicación de puerto, volumen nombrado y health check. `SA_PASSWORD` está deprecado y no se usará. La API y el fallback hacia un SQL Server externo se configuran únicamente mediante `ConnectionStrings__InovaitDatabase`; no se versionan passwords y producción no admite `TrustServerCertificate=True`. Compose facilita una instancia persistente local, pero no reemplaza ni duplica la puerta automatizada Testcontainers.
+
 ## Estructura de documentación
 
 ```text
@@ -117,9 +123,9 @@ docs/{architecture,entity-relationship-model,testing-strategy,requirements-trace
 
 | Slice | Resultado autónomo | Dependencia | Verificación futura |
 | --- | --- | --- | --- |
-| S01 | solución de tres proyectos y test harness HTTP; salida de scaffold aislada | planificación | materializado; gate por SHAs pendiente hasta crear commits |
-| S02 | normalizador, auditoría/concurrencia y convenciones relacionales | S01 | unitarias + modelo EF |
-| S03 | cinco tablas de catálogo P0, singleton, checks y save behavior | S02 | tres evidencias parciales ejecutables solo contra las cinco tablas; sin acreditar triggers/permisos |
+| S01 | solución de tres proyectos y test harness HTTP; salida de scaffold aislada | planificación | PASS: gate inmutable 360, restore/build/tests/format verdes |
+| S02 | normalizador, auditoría/concurrencia y convenciones relacionales | S01 | PASS: gate inmutable 253 y SQL Server 2022 real verde |
+| S03 | cinco tablas de catálogo P0, singleton, checks y save behavior | S02 | S03A parcial en `034ddc7`: entidades/configuraciones y tres pruebas verdes; seed, fail-fast, triggers/permisos y gate final pendientes |
 | S04 | `Person` y roles duales | S03 | NFC/collation/roles/concurrencia |
 | S05 | `ClassGroup`/`Enrollment` y unicidad anual | S04 | FK compuesto/3NF/índices |
 | S06 | `TeacherContract` y cancelación/solapamiento | S04 | checks/Serializable/índices |
@@ -130,7 +136,7 @@ docs/{architecture,entity-relationship-model,testing-strategy,requirements-trace
 | S14–S17 | una capacidad P1 por slice | S13 | BQ aislada |
 | S18 | hardening y entrega | aplicables | suite y walkthrough |
 
-**Primer slice autónomo**: S01. Inicio: repositorio solo con planificación. Estado actual: la estructura de tres proyectos y dos proyectos de pruebas compila, el runner base ejecuta y no existe dominio ni migración. El manifest generado está en `docs/generated-manifests/s01.txt`: enumera las 16 rutas producidas por los comandos de scaffold, incluidas plantillas que después se modifican o eliminan. El commit generado conserva esas plantillas sin personalización; todo delta posterior —ediciones, altas y bajas— se cuenta en `HUMAN_BASE...HUMAN_HEAD`. El gate por SHAs se ejecuta después de crear los commits autorizados; rollback elimina únicamente la solución recién creada.
+**Estado de ejecución hasta `034ddc7`**: S01 cerró con manifest exacto y gate humano 360; S02 cerró con gate 253 y SQL Server 2022 real mediante Testcontainers. S03A ya materializó las cinco entidades de catálogo, sus configuraciones SQL Server y tres pruebas parciales verdes; todavía debe completar V2-T020/V2-T023, seed, fail-fast y gate mediante V2-T024–V2-T026. No se acreditan aún triggers, permisos ni evidencia P0 completa. Los SHAs y comandos reproducibles de S01/S02 permanecen registrados en `docs/evaluator-execution.md`.
 
 **Fallbacks predefinidos**: S03 se divide en tablas/configuración de catálogos y seed/startup check con evidencia parcial; no acredita triggers ni permisos. S07 se divide en migration generada, protecciones manuales y verificación completa posterior a V2-T045; S12 en setup, paridad/índices/permisos y runner/gate; S13 en modelo P1, migraciones/paridad y `listSubjects` end-to-end. Cada hijo conserva su propio manifest, `HUMAN_BASE`, gate ≤400 y rollback. No se improvisa una excepción para evitar la división.
 

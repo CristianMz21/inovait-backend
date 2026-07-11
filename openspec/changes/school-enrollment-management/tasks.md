@@ -2,6 +2,8 @@
 description: "Tareas P0-first para el modelo de producción y capacidades escolares"
 ---
 
+> **GENERATED, NON-AUTHORITATIVE COMPATIBILITY LEDGER FOR `school-enrollment-management` — DO NOT EDIT AS A SOURCE.** The sole task and progress authority is `specs/001-school-enrollment-management/tasks.md`. Synchronization is strictly one way: canonical root → this ledger. Apply agents MUST update the canonical root first and regenerate this file in the same work unit. Any difference in task IDs, descriptions, checkboxes, or ordering is a hard drift failure: stop apply and regenerate from the canonical root; this ledger MUST NEVER originate a task change.
+
 # Tareas: gestión escolar con modelo de producción
 
 **Estado**: S01 y S02 completos; S03A parcial hasta `034ddc7`, con V2-T021/V2-T022 completos y V2-T020/V2-T023 parciales. Este documento publica el task set estable `production-model-v2.0.0`, con IDs `V2-T001`–`V2-T103`: 21 completos y 82 pendientes —2 de ellos parciales—. Existen solución, convenciones de persistencia y cinco entidades de catálogo; todavía no existen migraciones ni `database/setup.sql`.
