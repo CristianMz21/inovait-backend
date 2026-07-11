@@ -34,7 +34,7 @@ Parity tests compare `sys.schemas`, `sys.tables`, `sys.columns`, `sys.default_co
 
 ## Current Execution Snapshot
 
-Verified HEAD `e43c032`: S01–S04 and V2-T001–V2-T031 are complete. S04 proves composite Person identity, independent Student/Teacher PK+FK roles, exact people mappings, collation/check/index contracts and audit/rowversion allocation against real SQL Server. S05/V2-T032 is next; no Enrollment evidence is claimed.
+Verified HEAD `b46fc52`: S01–S04 and V2-T001–V2-T035 are complete. The S05 model proves ClassGroup/Enrollment exact mappings, annual uniqueness, composite group-year integrity, controlled 3NF dependency, exact audit allocation and partial index metadata against real SQL Server. V2-T036 is next and V2-T037 remains the final S05 gate.
 
 ## Open Questions
 

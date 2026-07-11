@@ -45,11 +45,11 @@ Testcontainers es la única puerta relacional automatizada. Una instancia extern
 | `IT-SINGLETON` | producida y ejecutada en S07 después de V2-T045: PK+CHECK bloquean segundo Id; seed Id=1 existe; runtime no inserta/elimina; trigger bloquea delete; ausencia simulada provoca fail-fast |
 | `IT-REFERENCE-PERMISSIONS` | producida y ejecutada en S07 después de V2-T045: con `EXECUTE AS USER` para un usuario de prueba miembro solo de `[inovait_runtime]`, SELECT de `catalog.DocumentType` funciona e INSERT/UPDATE/DELETE fallan por DENY explícito; la paridad posterior de setup pertenece a `IT-SQL-SCRIPT` |
 | `IT-IMMUTABILITY` | producida y ejecutada en S07 después de V2-T045: EF rechaza cambio de Code/Sector; SQL directo activa cada trigger P0; otros campos mutables sí cambian |
-| `IT-ENR-ANNUAL` | UNIQUE estudiante+año y FK compuesto con `UQ_ClassGroup_Id_AcademicYear_ForEnrollment` |
+| `IT-ENR-ANNUAL` | permite historia en años distintos; UNIQUE estudiante+año rechaza duplicado y FK compuesto con `UQ_ClassGroup_Id_AcademicYear_ForEnrollment` rechaza año divergente |
 | `IT-ENR-ATOMIC` | alta Person/Student/Enrollment todo-o-nada; carrera anual tiene un ganador |
 | `IT-CON-CANCELLATION` | checks all-or-none, razón no vacía y fecha efectiva dentro del período |
 | `IT-CON-OVERLAP` | duplicado/toque/carrera `Serializable`; escuela diferente permitida |
-| `IT-NORMAL-FORMS` | claves/FK prueban roles sin duplicación; Enrollment no contiene School/Grade; cero agregados persistidos |
+| `IT-NORMAL-FORMS` | claves/FK prueban roles sin duplicación; Enrollment no contiene School/Grade/estado derivado ni auditoría genérica; cero agregados persistidos |
 | `IT-INDEXES-P0` | nombres, orden de keys e `INCLUDE` exactos para ClassGroup/Enrollment/TeacherContract; `Id` ausente de INCLUDE y disponible implícitamente por PK clustered; FK soportadas sin índices redundantes declarados |
 | `IT-SEED-P0` | 11 tablas, catálogos con códigos, DocumentType y singleton coherentes |
 | `IT-SQL-SCRIPT` | setup y migración coinciden en schemas, columnas, collation, defaults, constraints, índices, triggers, seeds y permisos |
@@ -92,7 +92,7 @@ Las pruebas consultan `sys.indexes` y `sys.index_columns`, distinguen key/includ
 
 ## Staging y manifests de evidencia
 
-S02 produce el harness probe. S03 posee tres IDs catalog-only y dos casos P0 auxiliares para concurrencia y rollback/cleanup de seed. S04 produce `UT-IDENTITY` y los tres IDs `IT-PERSON-*`/`IT-TEXT-CHECKS` contra `Person` y roles reales. V2-T046 revalida las protecciones completas mediante `IT-SCHEMAS-P0`, `IT-IMMUTABILITY`, `IT-SINGLETON` e `IT-REFERENCE-PERMISSIONS` después de materializar 11 tablas y la migración manual.
+S02 produce el harness probe. S03 posee tres IDs catalog-only y dos casos P0 auxiliares para concurrencia y rollback/cleanup de seed. S04 produce `UT-IDENTITY` y los tres IDs `IT-PERSON-*`/`IT-TEXT-CHECKS` contra `Person` y roles reales. S05/V2-T032 produce `IT-ENR-ANNUAL`, `IT-NORMAL-FORMS` y assertions parciales de índices sin anticipar `IT-INDEXES-P0`, reservado para V2-T070. V2-T046 revalida las protecciones completas mediante `IT-SCHEMAS-P0`, `IT-IMMUTABILITY`, `IT-SINGLETON` e `IT-REFERENCE-PERMISSIONS` después de materializar 11 tablas y la migración manual.
 
 ### Manifest P0 canónico: ID → productor único
 
