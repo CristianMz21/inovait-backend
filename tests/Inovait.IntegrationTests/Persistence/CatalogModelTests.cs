@@ -27,7 +27,7 @@ public sealed class CatalogModelTests(SqlServerFixture fixture) : IAsyncLifetime
     public async Task CatalogSchema_UsesCanonicalPhysicalMappings()
     {
         var tables = await _context.Database.SqlQueryRaw<string>(
-            "SELECT CONCAT(SCHEMA_NAME([schema_id]), '.', [name]) AS [Value] FROM sys.tables ORDER BY [name]")
+            "SELECT CONCAT(SCHEMA_NAME([schema_id]), '.', [name]) AS [Value] FROM sys.tables WHERE [schema_id]=SCHEMA_ID('catalog') ORDER BY [name]")
             .ToArrayAsync(TestContext.Current.CancellationToken);
         Assert.Equal(["catalog.AcademicConfiguration", "catalog.AcademicYear", "catalog.DocumentType", "catalog.Grade", "catalog.School"], tables);
 
