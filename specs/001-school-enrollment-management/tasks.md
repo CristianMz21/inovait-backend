@@ -4,9 +4,9 @@ description: "Tareas P0-first para gestión de inscripción escolar y contrataci
 
 # Tareas: Gestión de inscripción escolar y contratación docente
 
-**Estado**: planificación únicamente; ningún comando fue ejecutado. P0 es el alcance comprometido de una jornada bajo un pronóstico de riesgo alto y las condiciones de la ruta crítica; P1 es una extensión condicional posterior a la puerta T050.
+**Estado**: planificación únicamente; solo T002 está completada mediante el baseline autorizado `1223630ab99bf1bfaa4f5919fccf5ff539379c8e`. No se ejecutaron tareas de scaffold ni implementación. P0 es el alcance comprometido de una jornada bajo un pronóstico de riesgo alto y las condiciones de la ruta crítica; P1 es una extensión condicional posterior a la puerta T050.
 
-Las 76 tareas son ítems finos de checklist para dependencias, revisión y evidencia; no representan 76 horas secuenciales. La ejecución P0 asistida agrupa T001–T051 en los siete timeboxes de la ruta crítica de [quickstart.md](./quickstart.md). El pronóstico continúa siendo alto riesgo y no reduce las estimaciones de líneas siguientes.
+Las 76 tareas son ítems finos de checklist para dependencias, revisión y evidencia; no representan 76 horas secuenciales. La ejecución P0 asistida agrupa las tareas pendientes de T001–T051 en los siete timeboxes de la ruta crítica de [quickstart.md](./quickstart.md). El pronóstico continúa siendo alto riesgo y no reduce las estimaciones de líneas siguientes.
 
 ## Review Workload Forecast
 
@@ -28,7 +28,7 @@ Chain strategy: pending
 
 | Unidad | Resultado autónomo | Líneas humanas | Generado separado | Verificación |
 | --- | --- | ---: | ---: | --- |
-| WU00 | baseline de planificación autorizado | 0 | 0 | commit contiene bundle completo |
+| WU00 | baseline de planificación completado (`1223630ab99bf1bfaa4f5919fccf5ff539379c8e`) | 0 | 0 | commit contiene los diez YAML |
 | WU01 | scaffold y configuración | 80–140 | 450–750 | restore/build/test base |
 | WU02 | modelo/persistencia P0 | 300–400 | 180–320 migración | metadatos de 8 tablas |
 | WU03 | host, errores y catálogos P0 | 280–400 | 0 | IT-CATALOGS/P0 |
@@ -47,7 +47,7 @@ Los archivos generados no se mezclan con lógica humana. Si scaffold, lockfile, 
 ## Fase 0: decisiones bloqueantes y guía temprana
 
 - [ ] T001 Verificar en solo lectura que no existen `src/`, `tests/`, `database/setup.sql`, solución ni proyectos, y registrar el estado en `docs/evaluator-execution.md`; **Dep.** ninguna; **Criterio** planificación intacta, sin ejecutar scaffold/build/test.
-- [ ] T002 [REQ-050; 15 operationIds] Obtener autorización explícita para crear un commit de baseline de planificación, versionar los diez YAML OpenAPI y registrar commit+checksum en `docs/evaluator-execution.md`; **Dep.** T001; **Criterio** el commit contiene el bundle completo y no se atribuye falsamente a `ce160e9...`. **Bloquea T005 si falta autorización.**
+- [x] T002 [REQ-050; 15 operationIds] Baseline de planificación autorizado y creado: `1223630ab99bf1bfaa4f5919fccf5ff539379c8e` versiona los diez YAML OpenAPI con checksum combinado `802c13b91bf5c6425d24c540b6841a2abe134e084ea310fc2b7041e32c24a81a`; **Dep.** T001; **Criterio cumplido** el commit contiene el bundle completo. El registro ampliado en `docs/evaluator-execution.md` permanece dentro de T048.
 - [ ] T003 [REQ-051] Elegir antes del scaffold una estrategia chained/stacked o aprobar `size:exception` solo para archivos generados; **Dep.** T001; **Criterio** decisión, ramas objetivo, límites y rollback quedan en `docs/evaluator-execution.md`. **Bloquea T005 si sigue pendiente.**
 - [ ] T004 Crear temprano `docs/evaluator-execution.md` con prerrequisitos, comandos futuros, expected P0 test count=12, walkthroughs, evidencias y secciones de handoff; **Dep.** T001; **Criterio** existe antes de cualquier handoff o puerta y no afirma resultados ejecutados.
 
@@ -115,7 +115,7 @@ Los archivos generados no se mezclan con lógica humana. Si scaffold, lockfile, 
 - [ ] T046 Crear `scripts/run-p0-tests.sh`: listar `Priority=P0`, fallar bajo 12 casos y luego ejecutar el filtro; **Dep.** T010,T014,T021,T027,T028,T033,T037,T038,T044,T045; **Criterio** cero pruebas o descubrimiento incompleto nunca pasa.
 - [ ] T047 Actualizar `README.md` con setup P0, Testcontainers primario, SQL del evaluador y fallback externo opcional; **Dep.** T043,T046; **Criterio** comandos copiables y estado de implementación real.
 - [ ] T048 Completar `docs/evaluator-execution.md` con baseline commit/checksum, SQL, runner, requests/responses y observación local no bloqueante; **Dep.** T043–T047; **Criterio** walkthrough por persona sin contexto y sin prometer P1.
-- [ ] T049 Preparar handoff frontend P0 que exija contrato backend tracked, clean y coincidente con baseline; **Dep.** T048; **Criterio** la verificación falla ante untracked/dirty/checksum distinto y no usa `ce160e9...`.
+- [ ] T049 Preparar handoff frontend P0 que exija contrato backend versionado, clean y coincidente con el baseline `1223630ab99bf1bfaa4f5919fccf5ff539379c8e`; **Dep.** T048; **Criterio** la verificación falla ante archivos no versionados, checkout sucio o checksum distinto.
 - [ ] T050 [REQ-027; OUT-001–004] Ejecutar `scripts/run-p0-tests.sh`, paridad de `database/setup.sql` y tres walkthroughs P0; **Dep.** T044–T049; **Criterio** ≥12 casos descubiertos, todos verdes y evidencia fechada. **Bloquea T052–T071 si falla.**
 - [ ] T051 Emitir entrega/handoff P0 separado y registrar forecast real por WU; **Dep.** T050; **Criterio** P0 reproducible, frontend separado y estrategia de revisión cumplida.
 

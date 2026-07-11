@@ -27,7 +27,7 @@ Los valores son marcadores locales, no secretos versionables. En Windows se usar
 
 ## Evidencia contractual de planificación
 
-El checksum combinado local de los diez YAML es `802c13b91bf5c6425d24c540b6841a2abe134e084ea310fc2b7041e32c24a81a`. Es evidencia del working tree sin seguimiento, no de `HEAD` ni de un release. Antes de apply deberá existir autorización explícita, commit que contenga el bundle completo y working tree clean; el consumidor frontend debe fallar si cualquiera de esas condiciones no se cumple.
+Los diez YAML están versionados en el baseline `1223630ab99bf1bfaa4f5919fccf5ff539379c8e` con checksum combinado `802c13b91bf5c6425d24c540b6841a2abe134e084ea310fc2b7041e32c24a81a`. Antes de consumir el contrato se debe comprobar que el checkout esté clean y coincida con ese baseline; el consumidor frontend debe fallar ante archivos no versionados, cambios locales o un checksum distinto. La estrategia de revisión o `size:exception` continúa pendiente y bloquea apply por separado.
 
 ## Ruta crítica P0 asistida por IA — ocho horas
 

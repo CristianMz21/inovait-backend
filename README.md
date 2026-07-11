@@ -2,7 +2,7 @@
 
 API planificada para la evaluación técnica de gestión de inscripciones escolares y contratos docentes.
 
-> **Estado actual**: planificación únicamente. El repositorio no contiene scaffold .NET, proyectos, código fuente, pruebas, migraciones ni `database/setup.sql`. Los artefactos de `specs/`, `docs/`, `.specify/` y `.agents/` están en el working tree sin seguimiento; el commit actual `ce160e9...` contiene solo el baseline inicial de README/gitignore.
+> **Estado actual**: planificación únicamente. El repositorio no contiene scaffold .NET, proyectos, código fuente, pruebas, migraciones ni `database/setup.sql`. El baseline autorizado `1223630ab99bf1bfaa4f5919fccf5ff539379c8e` versiona los artefactos de `specs/`, `docs/`, `.specify/` y `.agents/`, incluidos los diez YAML del bundle OpenAPI.
 
 ## Compromiso de una jornada
 
@@ -39,7 +39,7 @@ Rutas funcionales principales:
 
 Las referencias School/Grade/AcademicYear existentes siempre forman un contexto consultable; sin ClassGroup se devuelve `200 []`. No existe ni se planifica una tabla adicional de oferta académica.
 
-El checksum combinado local `802c13b91bf5c6425d24c540b6841a2abe134e084ea310fc2b7041e32c24a81a` solo prueba el working tree. Antes de implementar se requiere autorización explícita para versionar la planificación y registrar un commit que contenga el bundle completo.
+El checksum combinado de los diez YAML permanece en `802c13b91bf5c6425d24c540b6841a2abe134e084ea310fc2b7041e32c24a81a`; los diez archivos están versionados en el baseline `1223630ab99bf1bfaa4f5919fccf5ff539379c8e`. La puerta contractual está resuelta, pero apply continúa bloqueado hasta elegir la estrategia de revisión o aprobar la `size:exception` limitada prevista en el plan.
 
 ## Ejecución futura
 

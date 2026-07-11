@@ -60,7 +60,7 @@ Cada feature expone un servicio de caso de uso y un puerto específico cuando ne
 
 ## Contrato y errores
 
-`contracts/openapi.yaml` es la fuente canónica de diseño. Actualmente el bundle está sin seguimiento: el HEAD `ce160e9...` no lo contiene. Apply queda bloqueado hasta obtener autorización explícita, crear un baseline versionado y registrar su commit+checksum; el frontend deberá rechazar un contrato untracked, dirty o divergente. ASP.NET Core generará un documento para comprobar divergencias, pero no redefine rutas ni schemas. Todas las operaciones declaran `security: []`; no se registra autenticación.
+`contracts/openapi.yaml` es la fuente canónica de diseño. Los diez YAML del bundle están versionados en el baseline `1223630ab99bf1bfaa4f5919fccf5ff539379c8e` con checksum combinado `802c13b91bf5c6425d24c540b6841a2abe134e084ea310fc2b7041e32c24a81a`. La puerta contractual está resuelta; apply sigue bloqueado únicamente por la estrategia de revisión o `size:exception` pendiente. El frontend deberá rechazar un checkout sucio o divergente del baseline. ASP.NET Core generará un documento para comprobar divergencias, pero no redefine rutas ni schemas. Todas las operaciones declaran `security: []`; no se registra autenticación.
 
 Para lecturas no existe una entidad adicional de “oferta académica”: cualquier School/Grade/AcademicYear existente es un contexto válido y la ausencia de ClassGroup devuelve vacío. Solo una escritura que suministra un ClassGroup ajeno al contexto produce `422`.
 

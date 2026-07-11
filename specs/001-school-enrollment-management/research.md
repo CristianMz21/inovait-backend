@@ -74,7 +74,7 @@ Microsoft clasifica .NET 10 como LTS en soporte activo hasta 2028-11-14; .NET 8 
 
 ### OpenAPI y errores
 
-**Decisión**: OpenAPI 3.1.0 modular, rutas `/api/...`, camelCase, `security: []` y `ProblemDetails` con `code` y errores por campo. Cada operación declara solo los estados que puede producir. El bundle del working tree es canónico para diseño, pero no es reproducible hasta que una autorización explícita permita versionar el baseline completo y registrar commit+checksum.
+**Decisión**: OpenAPI 3.1.0 modular, rutas `/api/...`, camelCase, `security: []` y `ProblemDetails` con `code` y errores por campo. Cada operación declara solo los estados que puede producir. Los diez YAML del bundle canónico están versionados y son reproducibles desde el baseline `1223630ab99bf1bfaa4f5919fccf5ff539379c8e`; su checksum combinado es `802c13b91bf5c6425d24c540b6841a2abe134e084ea310fc2b7041e32c24a81a`.
 
 **Fundamento**: ASP.NET Core 10 admite generación OpenAPI de primera parte para Controllers y Minimal APIs. La modularidad mantiene unidades revisables menores a 400 líneas.
 

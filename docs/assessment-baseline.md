@@ -6,7 +6,7 @@ Este documento preserva en español profesional la consigna disponible antes de 
 
 **Fuentes preservadas**:
 
-- `README.md` del commit inicial `ce160e92d001c43a4ab5f7849da1957ae412b909`, que resume alcance, reglas, endpoints esperados y entregables.
+- `README.md` inicial preservado en el historial anterior al baseline de planificación `1223630ab99bf1bfaa4f5919fccf5ff539379c8e`, que resume alcance, reglas, endpoints esperados y entregables.
 - constituciones ratificadas de backend y frontend, que preservan los entregables globales y criterios de evaluación.
 
 No existe en estos repositorios un archivo externo con el texto literal completo de la consigna. Por ello, la sección siguiente es una transcripción estructurada fiel del contenido preservado, no una cita textual atribuida a una fuente ausente.

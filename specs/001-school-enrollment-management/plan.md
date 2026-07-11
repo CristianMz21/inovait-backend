@@ -8,7 +8,7 @@
 
 ## Resumen
 
-El compromiso de alcance de una jornada se limita a P0: inscripción atómica, consulta por School/Grade/AcademicYear y contratación docente multiescuela, junto con catálogos necesarios, SQL Server mínimo, pruebas críticas y walkthrough del evaluador. Su factibilidad es **de riesgo alto** y está condicionada a la ruta crítica operativa de ocho horas definida en [quickstart.md](./quickstart.md); no es una promesa incondicional ni evidencia de ejecución. P1 permanece completamente diseñado como extensión condicional posterior a evidencia P0. La solución futura usa tres proyectos de producción y dos de pruebas, sin CQRS, MediatR ni `Generic Repository`; hoy el repositorio contiene únicamente planificación no versionada y el README inicial.
+El compromiso de alcance de una jornada se limita a P0: inscripción atómica, consulta por School/Grade/AcademicYear y contratación docente multiescuela, junto con catálogos necesarios, SQL Server mínimo, pruebas críticas y walkthrough del evaluador. Su factibilidad es **de riesgo alto** y está condicionada a la ruta crítica operativa de ocho horas definida en [quickstart.md](./quickstart.md); no es una promesa incondicional ni evidencia de ejecución. P1 permanece completamente diseñado como extensión condicional posterior a evidencia P0. La solución futura usa tres proyectos de producción y dos de pruebas, sin CQRS, MediatR ni `Generic Repository`; hoy el repositorio contiene únicamente la planificación versionada en el baseline `1223630ab99bf1bfaa4f5919fccf5ff539379c8e`, sin scaffold ni implementación.
 
 ## Contexto técnico
 
@@ -107,15 +107,15 @@ Para listas y reportes, cualquier trío de referencias existentes School/Grade/A
 | P0 | operaciones de inscripción y contratos | Pantallas FE-S01 a FE-S04 | Sin autenticación; `security: []` |
 | P1 | cuatro capacidades de reporte | FE-S05 y FE-S06 | BQ-001/002 comparten respuesta |
 
-La planificación frontend está sincronizada para contenido de planificación: define 49 tareas —P0 T001–T035, P1 T036–T047 y cierre T048–T049—, 13 consumidores runtime y conserva `listSubjects` y `listTeachersBySchool` como contract-only; `SCN-035` permanece backend-only. No queda sincronización documental pendiente. El contrato aún no es reproducible y requiere el baseline versionado explícitamente autorizado descrito a continuación.
+La planificación frontend está sincronizada para contenido de planificación: define 49 tareas —P0 T001–T035, P1 T036–T047 y cierre T048–T049—, 13 consumidores runtime y conserva `listSubjects` y `listTeachersBySchool` como contract-only; `SCN-035` permanece backend-only. No queda sincronización documental pendiente. El contrato es reproducible desde el baseline versionado descrito a continuación.
 
 ### Reproducibilidad del contrato
 
-El bundle OpenAPI local es evidencia de working tree, no evidencia de `HEAD`: el commit `ce160e92d001c43a4ab5f7849da1957ae412b909` no contiene `specs/` ni el contrato. El checksum combinado local actual de los diez YAML, en el orden documentado en quickstart, es `802c13b91bf5c6425d24c540b6841a2abe134e084ea310fc2b7041e32c24a81a`; cambia si se edita el working tree y todavía no identifica un baseline aprobado. Antes de cualquier scaffold o implementación se requiere autorización explícita para crear un commit de planificación; luego se registrarán el hash que contenga los diez YAML y su checksum. La verificación frontend deberá fallar si el contrato está sin seguimiento, sucio o no coincide con ese baseline. No se crea ningún commit durante esta remediación.
+Los diez YAML del bundle OpenAPI están versionados en el baseline autorizado `1223630ab99bf1bfaa4f5919fccf5ff539379c8e`. El checksum combinado, en el orden documentado en quickstart, permanece en `802c13b91bf5c6425d24c540b6841a2abe134e084ea310fc2b7041e32c24a81a`. La verificación frontend deberá fallar si los archivos dejan de estar versionados, el checkout está sucio o el contenido no coincide con ese baseline. Esta actualización documental no modifica el bundle ni crea otro commit.
 
 ### Puertas pre-apply
 
-1. **Contrato**: obtener autorización explícita para versionar el baseline completo y registrar commit+checksum aprobados.
+1. **Contrato — resuelta**: el baseline `1223630ab99bf1bfaa4f5919fccf5ff539379c8e` versiona los diez YAML y registra el checksum aprobado `802c13b91bf5c6425d24c540b6841a2abe134e084ea310fc2b7041e32c24a81a`.
 2. **Presupuesto de revisión**: la estrategia cacheada es `ask-on-risk`; antes del scaffold debe elegirse una cadena de PRs o aprobar una `size:exception` limitada a scaffold/migración/lockfiles generados. Mientras siga pendiente no se afirma “cero excepciones”.
 
 ## Seguimiento de complejidad
@@ -124,19 +124,19 @@ La redundancia controlada `Enrollment.AcademicYearId` es una decisión de integr
 
 ## Control constitucional posterior al diseño
 
-**Resultado**: PASS técnico condicionado por dos decisiones pre-apply: baseline contractual versionado y estrategia de revisión. El diseño mantiene P0 antes de P1, 3NF mínima, borrados restrictivos, OpenAPI canónico y Testcontainers; ninguna decisión pendiente autoriza scaffold ni implementación.
+**Resultado**: PASS técnico con el baseline contractual resuelto y condicionado por una decisión pre-apply pendiente: la estrategia de revisión. El diseño mantiene P0 antes de P1, 3NF mínima, borrados restrictivos, OpenAPI canónico y Testcontainers; la decisión pendiente no autoriza scaffold ni implementación.
 
 ## Hitos y compromiso
 
 ### Condiciones del pronóstico diario
 
-La ruta crítica P0 solo se considera operativa si la planificación y las dos puertas pre-apply están aprobadas antes de iniciar el reloj, SDK .NET, Node y Docker están listos, y una sola persona operadora trabaja con Codex/CLI sin interrupciones. P1 queda excluido. Los siete timeboxes, sus tareas y los cortes obligatorios de mitad de jornada y de la última hora están en [quickstart.md](./quickstart.md), como única fuente del horario.
+La ruta crítica P0 solo se considera operativa si la planificación y la puerta pendiente de estrategia de revisión están aprobadas antes de iniciar el reloj, SDK .NET, Node y Docker están listos, y una sola persona operadora trabaja con Codex/CLI sin interrupciones. El baseline contractual ya está resuelto. P1 queda excluido. Los siete timeboxes, sus tareas y los cortes obligatorios de mitad de jornada y de la última hora están en [quickstart.md](./quickstart.md), como única fuente del horario.
 
 Si el avance no cabe, solo puede retirarse hardening P0 no esencial —por ejemplo, observación de latencia, refactor cosmético o casos redundantes que no cubran un riesgo nuevo—. No se recorta ningún entregable original requerido, `database/setup.sql` ni una prueba crítica de integridad; si aun así no cabe, se declara incumplido el objetivo diario en lugar de prometer una entrega incompleta.
 
 | Hito | Esencial | Diferible sin romper P0 |
 | --- | --- | --- |
-| Pre-apply | commit autorizado del baseline y decisión de revisión | nada: ambas puertas bloquean scaffold |
+| Pre-apply | baseline `1223630ab99bf1bfaa4f5919fccf5ff539379c8e` resuelto; decisión de revisión pendiente | nada: la puerta de revisión aún bloquea scaffold |
 | Base P0 | scaffold, 8 tablas, migración P0, Testcontainers, `ProblemDetails`, cinco catálogos y seeds mínimos | Subject/TeachingAssignment/ClassSchedule y seeds de reportes |
 | P0 comprometido | US1-US3 end-to-end, `database/setup.sql` mínimo, pruebas con trait P0, runner con conteo mínimo, README y walkthrough | toda conducta P1 |
 | P1 condicional | cuatro consultas para BQ-001–BQ-005, tres tablas restantes, seeds y pruebas P1 | paginación, CRUD, autenticación y observabilidad avanzada |

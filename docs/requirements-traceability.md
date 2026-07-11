@@ -38,7 +38,7 @@ La planificación frontend remediada define **13 consumidores runtime** y conser
 
 Todas las superficies deben conservar teclado, foco visible, labels, adaptación responsive y anuncio accesible de `ProblemDetails`; la implementación visual pertenece a `inovait-frontend`.
 
-**Estado frontend verificado en planificación**: 49 tareas; P0 T001–T035, P1 condicional T036–T047 y cierre T048–T049; 0 tareas ejecutadas. El contenido de planificación entre repositorios está sincronizado y registra el checksum working-tree-only `802c13b91bf5c6425d24c540b6841a2abe134e084ea310fc2b7041e32c24a81a`. El contrato continúa untracked y no reproducible hasta que una autorización explícita permita crear un commit de baseline que contenga los diez YAML y registrar su commit+checksum aprobados.
+**Estado frontend verificado en planificación**: 49 tareas; P0 T001–T035, P1 condicional T036–T047 y cierre T048–T049; 0 tareas ejecutadas. El contenido de planificación entre repositorios está sincronizado. Los diez YAML del contrato backend están versionados en el baseline `1223630ab99bf1bfaa4f5919fccf5ff539379c8e` con checksum combinado `802c13b91bf5c6425d24c540b6841a2abe134e084ea310fc2b7041e32c24a81a`.
 
 ## Índice exacto de escenarios
 
@@ -159,5 +159,5 @@ Las 15 operaciones aparecen al menos una vez. El backend P0 implementa 10 operat
 - OUT-001–OUT-009: 9/9 enlazados; OUT-006 es observación no gating.
 - operationIds: 15/15; 10 P0 y 5 P1 condicionales.
 - Tareas: 76/76 vigentes; T001–T051 P0, T052–T071 P1, T072–T076 cierre.
-- Frontend observado: 13 consumidores runtime + 2 contract-only; 49/49 tareas vigentes, contenido de planificación sincronizado y contrato aún untracked/no reproducible hasta un baseline explícitamente autorizado.
-- Estado de implementación: 0 tareas ejecutadas; no existe scaffold, código, pruebas, migraciones ni `database/setup.sql`.
+- Frontend observado: 13 consumidores runtime + 2 contract-only; 49/49 tareas vigentes y contenido de planificación sincronizado con el contrato backend reproducible desde el baseline `1223630ab99bf1bfaa4f5919fccf5ff539379c8e`.
+- Estado de implementación: 0 tareas de implementación ejecutadas; solo se completó la puerta documental T002. No existe scaffold, código, pruebas, migraciones ni `database/setup.sql`.
