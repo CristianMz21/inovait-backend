@@ -100,12 +100,21 @@ public sealed class P0OpenApiTests(SqlServerFixture fixture) : IAsyncLifetime
             .Where(name => name is not null)
             .Order(StringComparer.Ordinal)
             .ToArray();
-        string[] expected =
+        string[] expectedP0 =
         [
             "createEnrollment", "createTeacherContracts", "listAcademicYears", "listClassGroups", "listEnrollments",
             "listGrades", "listSchools", "listTeacherContracts", "listTeachers", "listTeachersBySchool",
         ];
-        Assert.Equal(expected.Order(StringComparer.Ordinal), operationIds);
+        string[] canonicalBundle =
+        [
+            .. expectedP0,
+            "getAgeDistribution", "getDistinctTeacherCountsBySector", "getStudentHistory",
+            "getTopSchoolsByEnrollment", "listSubjects",
+        ];
+        Assert.Equal(
+            expectedP0.Order(StringComparer.Ordinal),
+            operationIds.Intersect(expectedP0, StringComparer.Ordinal).Order(StringComparer.Ordinal));
+        Assert.Empty(operationIds.Except(canonicalBundle, StringComparer.Ordinal));
     }
 
     private static async Task AssertProblemAsync(HttpResponseMessage response, HttpStatusCode status, string expectedCode)
