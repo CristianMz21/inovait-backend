@@ -34,7 +34,7 @@ Parity tests compare `sys.schemas`, `sys.tables`, `sys.columns`, `sys.default_co
 
 ## Current Execution Snapshot
 
-Verified HEAD `28e25a2`: S01–S05 and V2-T001–V2-T038,V2-T040,V2-T041 are complete. The S06 model checkpoint proves TeacherContract date/cancellation behavior, exact-open uniqueness, checks/FK/audit/rowversion and canonical indexes. V2-T039 remains pending because full non-exact/two-connection `IT-CON-OVERLAP` requires the indexed `Serializable` workflow in V2-T042.
+Verified HEAD `247794a`: S01–S06 and V2-T001–V2-T043 are complete. S06 proves TeacherContract date/cancellation behavior, exact-open uniqueness, checks/FK/audit/rowversion, canonical indexes, atomic multi-school validation, indexed inclusive overlap reads and two-connection enforcement inside `Serializable` transactions. V2-T044 starts the isolated generated P0 migration work unit.
 
 ## Open Questions
 

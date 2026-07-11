@@ -71,7 +71,8 @@ La salida esperada incluye `401` y `human gate failed: 401 > 400`; el último `t
 | S04 | `8136dc0cfde187b39a4c211fdff63de24ec3fb89` | `8136dc0cfde187b39a4c211fdff63de24ec3fb89` | `e43c032c648beda45febcbd4b8fcf4282d0bfdf1` | PASS: sin salida generada, 394 líneas humanas, dentro del límite de 400. |
 | S05 modelo (V2-T032–V2-T035) | `43e3635eb91de9902898949ffeda9ed428fe438a` | `43e3635eb91de9902898949ffeda9ed428fe438a` | `b46fc52ccef011fbe9b1d38a014efd98abcea157` | PASS: sin salida generada, 285 líneas humanas; cierre final registrado en la unidad siguiente. |
 | S05 workflow (V2-T036–V2-T037) | `100b0e6511c34681823ce7ad7b798da78a38b772` | `100b0e6511c34681823ce7ad7b798da78a38b772` | `f48748febea49a212ddfed983f1d361d416801e2` | PASS: sin salida generada, 400 líneas humanas exactas, dentro del límite sin excepción; S05 cerrado. |
-| S06 modelo (V2-T038,V2-T040–V2-T041) | `ea8335496badae0c4de4de81cb61a661a23f8da6` | `ea8335496badae0c4de4de81cb61a661a23f8da6` | `28e25a25546763b268a9565db466b79be6c52de7` | PASS: sin salida generada, 363 líneas humanas; modelo cerrado, V2-T039/V2-T042–V2-T043 pendientes. |
+| S06 modelo (V2-T038,V2-T040–V2-T041) | `ea8335496badae0c4de4de81cb61a661a23f8da6` | `ea8335496badae0c4de4de81cb61a661a23f8da6` | `28e25a25546763b268a9565db466b79be6c52de7` | PASS: sin salida generada, 363 líneas humanas; cierre final registrado en la unidad siguiente. |
+| S06 workflow (V2-T039,V2-T042–V2-T043) | `f0fdfeea65cde336e1093ba2890b5d713d99fcfe` | `f0fdfeea65cde336e1093ba2890b5d713d99fcfe` | `247794aa41597f5c6d65934e3215a0f99a5d9352` | PASS: sin salida generada, 375 líneas humanas, dentro del límite sin excepción; S06 cerrado. |
 
 ### Secuencia exacta ejecutada
 
@@ -84,6 +85,7 @@ La salida esperada incluye `401` y `human gate failed: 401 > 400`; el último `t
 7. `feat: add annual enrollment model` (`b46fc52ccef011fbe9b1d38a014efd98abcea157`): work unit de modelo S05 de 6 rutas exclusivamente bajo `src/` y `tests/`; sin salida generada.
 8. `feat: add atomic enrollment workflow` (`f48748febea49a212ddfed983f1d361d416801e2`): work unit S05 de command/puertos/transacción y pruebas de confiabilidad en 6 rutas bajo `src/` y `tests/`; sin salida generada.
 9. `feat: add teacher contract model` (`28e25a25546763b268a9565db466b79be6c52de7`): checkpoint de modelo S06 en 5 rutas bajo `src/` y `tests/`; sin salida generada y sin workflow `Serializable`.
+10. `feat: add atomic teacher contract workflow` (`247794aa41597f5c6d65934e3215a0f99a5d9352`): work unit S06 de command/puertos/transacción `Serializable` y pruebas de solapamiento/carrera en 5 rutas bajo `src/` y `tests/`; sin salida generada.
 
 ### Evidencia V2-T010
 
@@ -223,6 +225,19 @@ dotnet list package --vulnerable --include-transitive
 - OpenSpec strict/show/status, `gentle-ai sdd-status` y drift de 103 task lines: PASS, 40/103 completas y V2-T039 primera pendiente.
 - Gate inmutable `git diff --numstat ea8335496badae0c4de4de81cb61a661a23f8da6...28e25a25546763b268a9565db466b79be6c52de7 -- | ./scripts/check-human-lines.py`: PASS, salida exacta `363`, sin excepción.
 - V2-T038,V2-T040,V2-T041: PASS. V2-T039 y V2-T042–V2-T043 permanecen pendientes; S06 no está cerrado.
+
+## Evidencia técnica S06 workflow — 2026-07-11
+
+- `SLICE_BASE=HUMAN_BASE=f0fdfeea65cde336e1093ba2890b5d713d99fcfe`; `HUMAN_HEAD=247794aa41597f5c6d65934e3215a0f99a5d9352`; sin manifest/salida generada.
+- `ConnectionStrings__InovaitTest` estuvo explícitamente ausente; la evidencia SQL usó Testcontainers con `mcr.microsoft.com/mssql/server:2022-CU14-ubuntu-22.04` y bases limpias.
+- Targeted contractual: 27 unitarias + 6 integración SQL = 33/33 PASS. Los 6 casos `TeacherContractModelTests` completan `IT-CON-CANCELLATION`, `IT-CON-OVERLAP`, exact-open, checks/FK, índices/PK clustered, referencias y cancelación/rollback.
+- `IT-CON-OVERLAP`: PASS para período no exacto y abierto, toque inclusivo, mismo docente en escuela distinta y carrera sincronizada con dos `DbConnection` independientes; `Serializable` deja exactamente un contrato y el perdedor reintenta hasta `OverlapConflict`.
+- Workflow: PASS para command/resultados/errores canónicos, docente/escuela/rango/selección duplicada, prevalidación multiescuela sin escritura parcial, cancelación con rollback no cancelable y tracker limpio.
+- Filtro `Priority=P0`: 65 unitarias + 23 integración = 88/88 PASS; suites Debug y Release: 71 unitarias + 25 integración = 96/96 en cada configuración; cero fallos/omitidas.
+- Restore, builds Debug/Release con cero warnings/errores, format, vulnerabilidades, diff, árbol OpenAPI y checksum `802c13b91bf5c6425d24c540b6841a2abe134e084ea310fc2b7041e32c24a81a`: PASS.
+- OpenSpec strict/show/status, `gentle-ai sdd-status` y drift de 103 task lines: PASS, 43/103 completas y V2-T044 primera pendiente.
+- Gate inmutable `git diff --numstat f0fdfeea65cde336e1093ba2890b5d713d99fcfe...247794aa41597f5c6d65934e3215a0f99a5d9352 -- | ./scripts/check-human-lines.py`: PASS, salida exacta `375`, sin excepción.
+- V2-T039,V2-T042,V2-T043: PASS. S06 cerrado; V2-T044 inicia la migración P0 generada y aislada de S07.
 
 ## Notas operativas
 
