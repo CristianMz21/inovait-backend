@@ -6,7 +6,7 @@ description: "Tareas P0-first para el modelo de producción y capacidades escola
 
 # Tareas: gestión escolar con modelo de producción
 
-**Estado**: S01–S05 están verificados hasta `f48748f`; V2-T001–V2-T037 están cerradas y V2-T038 es la siguiente tarea. Este documento publica el task set estable `production-model-v2.0.0`, con 37 tareas completas y 66 pendientes. Existen `ClassGroup`, `Enrollment`, sus restricciones, índices y workflow transaccional de inscripción; todavía faltan `TeacherContract`, migraciones y `database/setup.sql`.
+**Estado**: S01–S05 están cerrados y el checkpoint de modelo S06 está verificado en `28e25a2`; V2-T001–V2-T038, V2-T040 y V2-T041 están cerradas, mientras V2-T039 es la primera pendiente. Este documento publica el task set estable `production-model-v2.0.0`, con 40 tareas completas y 63 pendientes. Existe el modelo `TeacherContract`; todavía faltan su workflow `Serializable`, migraciones y `database/setup.sql`.
 
 Los IDs `T001`–`T076` del baseline `1223630ab99bf1bfaa4f5919fccf5ff539379c8e` pertenecen exclusivamente al task set v1 y **no se pueden usar para ejecución actual**. Sus reemplazos, retiros y descomposiciones están en [task-id-supersession.md](../../docs/task-id-supersession.md). La semántica histórica no se considera estable por coincidencia numérica.
 
@@ -140,10 +140,10 @@ Fallbacks definidos antes de apply, cada sub-slice sujeto al mismo gate:
 
 ## Fase 6 / S06: TeacherContract
 
-- [ ] V2-T038 [P] [US3] [REQ-018–026,REQ-059] Escribir `UT-CONTRACT-CANCELLATION`, `UT-CONTRACT-STATUS` y `UT-CONTRACT-OVERLAP` en `tests/Inovait.UnitTests/Domain/TeacherContractTests.cs`; **Dep.** V2-T031.
-- [ ] V2-T039 [P] [US3] [REQ-022,REQ-059,REQ-061] Escribir `IT-CON-CANCELLATION`, `IT-CON-OVERLAP` e índice contractual en `tests/Inovait.IntegrationTests/Persistence/TeacherContractModelTests.cs`; **Dep.** V2-T031; **Criterio** metadata no declara `Id` en INCLUDE y sí prueba su disponibilidad implícita por PK clustered.
-- [ ] V2-T040 [US3] [REQ-018–023,REQ-059] Crear `TeacherContract` y transición Confirmed→Cancelled en `src/Inovait.Core/Domain/Staff/TeacherContract.cs`; **Dep.** V2-T038.
-- [ ] V2-T041 [US3] [REQ-020–023,REQ-057,REQ-059,REQ-061] Configurar checks, UQ exacto, auditoría/check/rowversion de `TeacherContract` y dos índices cubrientes sin `Id` en INCLUDE en `TeacherContractConfiguration.cs`; **Dep.** V2-T039,V2-T040.
+- [x] V2-T038 [P] [US3] [REQ-018–026,REQ-059] Escribir `UT-CONTRACT-CANCELLATION`, `UT-CONTRACT-STATUS` y `UT-CONTRACT-OVERLAP` en `tests/Inovait.UnitTests/Domain/TeacherContractTests.cs`; **Dep.** V2-T031; **Estado** PASS en `28e25a2` con 19/19 casos: transición/all-or-none, estado efectivo según fechas y cancelación efectiva, e intersección inclusiva pura con fin abierto.
+- [ ] V2-T039 [P] [US3] [REQ-022,REQ-059,REQ-061] Escribir `IT-CON-CANCELLATION`, `IT-CON-OVERLAP` e índice contractual en `tests/Inovait.IntegrationTests/Persistence/TeacherContractModelTests.cs`; **Dep.** V2-T031; **Estado** parcial en `28e25a2`: `IT-CON-CANCELLATION`, checks/FK/índices/clustering y `ModelEvidence=CONTRACT-EXACT-OPEN-UNIQUE` pasan contra SQL Server real, pero no existe todavía `IT-CON-OVERLAP` completo para solapamiento no exacto/carrera `Serializable`; **Criterio** metadata no declara `Id` en INCLUDE y sí prueba su disponibilidad implícita por PK clustered.
+- [x] V2-T040 [US3] [REQ-018–023,REQ-059] Crear `TeacherContract` y transición Confirmed→Cancelled en `src/Inovait.Core/Domain/Staff/TeacherContract.cs`; **Dep.** V2-T038; **Estado** PASS en `28e25a2`: rango, estado persistido/efectivo, cancelación UTC con razón/fecha efectiva y helper inclusivo de períodos.
+- [x] V2-T041 [US3] [REQ-020–023,REQ-057,REQ-059,REQ-061] Configurar checks, UQ exacto, auditoría/check/rowversion de `TeacherContract` y dos índices cubrientes sin `Id` en INCLUDE en `TeacherContractConfiguration.cs`; **Dep.** V2-T039,V2-T040; **Estado** PASS de implementación en `28e25a2` con UQ abierto sin filtro, dos FK `NoAction`, siete checks, auditoría/rowversion e índices key/include exactos; V2-T039 permanece pendiente por su evidencia de workflow.
 - [ ] V2-T042 [US3] [REQ-022–024] Implementar puertos y transacción `Serializable` en `src/Inovait.Core/Features/TeacherContracts/` y `src/Inovait.Infrastructure/Features/TeacherContracts/`; **Dep.** V2-T041.
 - [ ] V2-T043 Validar S06 con estados all-or-none, razón whitespace, fechas y carrera de dos conexiones, y ejecutar el gate humano obligatorio; **Dep.** V2-T042; **Criterio** ≤400 o bloqueo sin excepción.
 
@@ -238,7 +238,7 @@ Fallbacks definidos antes de apply, cada sub-slice sujeto al mismo gate:
 
 `V2-T001–V2-T004 → S01 V2-T005–V2-T010 → S02 V2-T011–V2-T019 → S03 V2-T020–V2-T026 → S04 V2-T027–V2-T031 → S05/S06 V2-T032–V2-T043 → S07 V2-T044–V2-T046 → S08–S11 V2-T047–V2-T067 → S12 V2-T068–V2-T075 → puerta P0 → S13 V2-T076–V2-T087 → S14–S17 V2-T088–V2-T099 → S18 V2-T100–V2-T103`.
 
-- Task set: `production-model-v2.0.0`; 103/103 tareas trazadas; 37 completas y 66 pendientes. S05 V2-T032–V2-T037 está cerrado y la primera pendiente es V2-T038. P0: V2-T001–V2-T075; P1 condicional: V2-T076–V2-T099; cierre: V2-T100–V2-T103.
+- Task set: `production-model-v2.0.0`; 103/103 tareas trazadas; 40 completas y 63 pendientes. S05 está cerrado; el checkpoint de modelo S06 cierra V2-T038,V2-T040,V2-T041 y la primera pendiente es V2-T039. P0: V2-T001–V2-T075; P1 condicional: V2-T076–V2-T099; cierre: V2-T100–V2-T103.
 - Cobertura auditada: 63/63 requisitos y 35/35 escenarios; cero tareas huérfanas o fuera de alcance y cero requisitos/escenarios sin ruta de ejecución. No se agregan ni renumeran IDs.
 - REQ-053–REQ-063: mapeados en V2-T020–V2-T046, V2-T068–V2-T070, V2-T075–V2-T087 y V2-T102.
 - OpenAPI no se modifica: el refactor mantiene códigos documentales en la proyección y los 15 operationIds.

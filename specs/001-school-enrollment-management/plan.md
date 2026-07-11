@@ -2,7 +2,7 @@
 
 **Rama de planificación**: `feat/production-data-model` | **Ejecución local actual**: `main` | **Fecha**: 2026-07-10 | **Especificación**: [spec.md](./spec.md)
 
-**Estado**: S01–S05 están verificados hasta `f48748f`; V2-T001–V2-T037 están cerradas y V2-T038 es la siguiente tarea. Existen `ClassGroup`, `Enrollment`, FK compuesto, unicidad anual, índices y workflow transaccional de inscripción; todavía faltan `TeacherContract`, migraciones y `database/setup.sql`. Esta actualización documental no autoriza commit, merge ni push.
+**Estado**: S01–S05 están cerrados y el checkpoint de modelo S06 está verificado en `28e25a2`; V2-T001–V2-T038,V2-T040,V2-T041 están cerradas y V2-T039 es la primera pendiente. Existe `TeacherContract` con cancelación, estado efectivo, checks, auditoría/rowversion e índices; todavía faltan el workflow `Serializable`, migraciones y `database/setup.sql`. Esta actualización documental no autoriza commit, merge ni push.
 
 **Task set ejecutable**: `production-model-v2.0.0` (`V2-T001`–`V2-T103`). Los IDs históricos `T001`–`T076` del baseline v1 están supersedidos y no son válidos para ejecución actual; ver [task-id-supersession.md](../../docs/task-id-supersession.md).
 
@@ -128,7 +128,7 @@ docs/{architecture,entity-relationship-model,testing-strategy,requirements-trace
 | S03 | cinco tablas de catálogo P0, singleton, checks y save behavior | S02 | PASS: `fb4309f`, gate inmutable 338, SQL Server real y 24/24 P0 |
 | S04 | `Person` y roles duales | S03 | PASS: `e43c032`, gate inmutable 394, identidad compuesta y SQL Server real |
 | S05 | `ClassGroup`/`Enrollment` y unicidad anual | S04 | PASS: modelo en `b46fc52`, workflow en `f48748f`, gates 285/400 y SQL Server real |
-| S06 | `TeacherContract` y cancelación/solapamiento | S04 | checks/Serializable/índices |
+| S06 | `TeacherContract` y cancelación/solapamiento | S04 | PARTIAL: modelo en `28e25a2`, gate 363 y SQL real; workflow `Serializable`/`IT-CON-OVERLAP` pendientes |
 | S07 | migración P0 generada aislada + migration de protecciones SQL separado | S03–S06 | aplicar cadena a SQL Server limpio y ejecutar evidencia completa de 11 tablas, triggers, singleton y permisos después de V2-T045 |
 | S08–S11 | catálogos/API, US1, US2 y US3 | S07, en orden | tests HTTP por capacidad |
 | S12 | `database/setup.sql`, paridad y walkthrough P0 | S08–S11 | manifest exacto de 37 IDs, ejecución completa y puerta P0 |
@@ -136,7 +136,7 @@ docs/{architecture,entity-relationship-model,testing-strategy,requirements-trace
 | S14–S17 | una capacidad P1 por slice | S13 | BQ aislada |
 | S18 | hardening y entrega | aplicables | suite y walkthrough |
 
-**Estado de ejecución hasta `f48748f`**: S01–S05 y V2-T001–V2-T037 están cerrados. S05 acredita `ClassGroup`/`Enrollment`, FK compuesto grupo+año, unicidad Student+año, 3NF controlada, auditoría exacta, índices key/include y workflow atómico con identidad/rol/retry/cancelación contra SQL Server real; sus gates inmutables dieron 285 para modelo y 400 para command/puertos/transacción. V2-T038 inicia S06.
+**Estado de ejecución hasta `28e25a2`**: S01–S05 y V2-T001–V2-T038,V2-T040,V2-T041 están cerrados. El checkpoint S06 acredita entidad `TeacherContract`, transición/estado efectivo según fecha, helper puro de intersección, checks/FK/UQ exacto abierto, auditoría/rowversion e índices key/include contra SQL Server real con gate inmutable 363. V2-T039 permanece pendiente: la unicidad exacta no reemplaza la detección de todo solapamiento, cuyo workflow `Serializable` y carrera pertenecen a V2-T042–V2-T043.
 
 **Frontera S03/S07**: S03 instala y prueba triggers/permisos solo sobre cinco tablas catalog bajo IDs S03; S07 materializa 11 tablas y revalida las protecciones completas bajo `IT-IMMUTABILITY`, `IT-SINGLETON` e `IT-REFERENCE-PERMISSIONS`. Los fallbacks S07/S12/S13 conservan manifest, gate ≤400 y rollback; no se improvisan excepciones.
 

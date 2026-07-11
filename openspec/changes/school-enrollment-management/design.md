@@ -34,7 +34,7 @@ Parity tests compare `sys.schemas`, `sys.tables`, `sys.columns`, `sys.default_co
 
 ## Current Execution Snapshot
 
-Verified HEAD `f48748f`: S01–S05 and V2-T001–V2-T037 are complete. S05 proves exact ClassGroup/Enrollment mappings, annual/composite integrity, controlled 3NF, audit/index allocation and the atomic enrollment workflow with canonical results, cancellation-safe rollback and deterministic SQL race handling. V2-T038 starts S06.
+Verified HEAD `28e25a2`: S01–S05 and V2-T001–V2-T038,V2-T040,V2-T041 are complete. The S06 model checkpoint proves TeacherContract date/cancellation behavior, exact-open uniqueness, checks/FK/audit/rowversion and canonical indexes. V2-T039 remains pending because full non-exact/two-connection `IT-CON-OVERLAP` requires the indexed `Serializable` workflow in V2-T042.
 
 ## Open Questions
 

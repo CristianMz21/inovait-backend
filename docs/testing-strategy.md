@@ -26,7 +26,7 @@ Testcontainers es la única puerta relacional automatizada. Una instancia extern
 | `UT-AGE` | límites 3/7/8/12/13, cumpleaños y fecha anterior al nacimiento |
 | `UT-CONTRACT-OVERLAP` | intervalos separados, toque inclusivo, contenido y fin abierto |
 | `UT-CONTRACT-CANCELLATION` | Confirmed sin datos; Cancelled con tres datos; razón whitespace; fecha fuera del contrato |
-| `UT-CONTRACT-STATUS` | Upcoming/Effective/Expired y Cancelled dominante |
+| `UT-CONTRACT-STATUS` | Upcoming/Effective/Expired por fecha y Cancelled desde su fecha efectiva |
 | `UT-ASSIGNMENT` (P1) | rango local; misma escuela; contención en año/contrato/cancelación; fin nulo acotado por año |
 
 ## Integración relacional P0
@@ -113,7 +113,7 @@ S02 produce el harness probe. S03 posee tres IDs catalog-only y dos casos P0 aux
 | `UT-CONTRACT-CANCELLATION` | V2-T038 |
 | `UT-CONTRACT-STATUS` | V2-T038 |
 | `IT-CON-CANCELLATION` | V2-T039 |
-| `IT-CON-OVERLAP` | V2-T039 |
+| `IT-CON-OVERLAP` | V2-T039,V2-T042 |
 | `IT-SCHEMAS-P0` | V2-T046 |
 | `IT-IMMUTABILITY` | V2-T046 |
 | `IT-SINGLETON` | V2-T046 |

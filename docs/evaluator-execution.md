@@ -71,6 +71,7 @@ La salida esperada incluye `401` y `human gate failed: 401 > 400`; el último `t
 | S04 | `8136dc0cfde187b39a4c211fdff63de24ec3fb89` | `8136dc0cfde187b39a4c211fdff63de24ec3fb89` | `e43c032c648beda45febcbd4b8fcf4282d0bfdf1` | PASS: sin salida generada, 394 líneas humanas, dentro del límite de 400. |
 | S05 modelo (V2-T032–V2-T035) | `43e3635eb91de9902898949ffeda9ed428fe438a` | `43e3635eb91de9902898949ffeda9ed428fe438a` | `b46fc52ccef011fbe9b1d38a014efd98abcea157` | PASS: sin salida generada, 285 líneas humanas; cierre final registrado en la unidad siguiente. |
 | S05 workflow (V2-T036–V2-T037) | `100b0e6511c34681823ce7ad7b798da78a38b772` | `100b0e6511c34681823ce7ad7b798da78a38b772` | `f48748febea49a212ddfed983f1d361d416801e2` | PASS: sin salida generada, 400 líneas humanas exactas, dentro del límite sin excepción; S05 cerrado. |
+| S06 modelo (V2-T038,V2-T040–V2-T041) | `ea8335496badae0c4de4de81cb61a661a23f8da6` | `ea8335496badae0c4de4de81cb61a661a23f8da6` | `28e25a25546763b268a9565db466b79be6c52de7` | PASS: sin salida generada, 363 líneas humanas; modelo cerrado, V2-T039/V2-T042–V2-T043 pendientes. |
 
 ### Secuencia exacta ejecutada
 
@@ -82,6 +83,7 @@ La salida esperada incluye `401` y `human gate failed: 401 > 400`; el último `t
 6. `feat: add person identity and role model` (`e43c032c648beda45febcbd4b8fcf4282d0bfdf1`): work unit S04 de 11 rutas exclusivamente bajo `src/` y `tests/`; sin salida generada.
 7. `feat: add annual enrollment model` (`b46fc52ccef011fbe9b1d38a014efd98abcea157`): work unit de modelo S05 de 6 rutas exclusivamente bajo `src/` y `tests/`; sin salida generada.
 8. `feat: add atomic enrollment workflow` (`f48748febea49a212ddfed983f1d361d416801e2`): work unit S05 de command/puertos/transacción y pruebas de confiabilidad en 6 rutas bajo `src/` y `tests/`; sin salida generada.
+9. `feat: add teacher contract model` (`28e25a25546763b268a9565db466b79be6c52de7`): checkpoint de modelo S06 en 5 rutas bajo `src/` y `tests/`; sin salida generada y sin workflow `Serializable`.
 
 ### Evidencia V2-T010
 
@@ -207,6 +209,20 @@ dotnet list package --vulnerable --include-transitive
 - OpenSpec strict/show/status, `gentle-ai sdd-status` y drift de 103 task lines: PASS, 37/103 completas y V2-T038 primera pendiente.
 - Gate inmutable `git diff --numstat 100b0e6511c34681823ce7ad7b798da78a38b772...f48748febea49a212ddfed983f1d361d416801e2 -- | ./scripts/check-human-lines.py`: PASS, salida exacta `400`, sin excepción.
 - V2-T036 y V2-T037: PASS. S05 cerrado; V2-T038 inicia S06.
+
+## Evidencia técnica S06 modelo — 2026-07-11
+
+- `SLICE_BASE=HUMAN_BASE=ea8335496badae0c4de4de81cb61a661a23f8da6`; `HUMAN_HEAD=28e25a25546763b268a9565db466b79be6c52de7`; sin manifest/salida generada.
+- Testcontainers usó `mcr.microsoft.com/mssql/server:2022-CU14-ubuntu-22.04`, con `ConnectionStrings__InovaitTest` explícitamente ausente.
+- `UT-CONTRACT-CANCELLATION`, `UT-CONTRACT-STATUS` y `UT-CONTRACT-OVERLAP`: 19/19 PASS; prueban transición, límites de estado según inicio/fin/cancelación efectiva e intersección inclusiva pura con fin abierto.
+- `TeacherContractModelTests`: 3/3 PASS contra SQL Server real: `IT-CON-CANCELLATION`, helper `ModelEvidence=CONTRACT-EXACT-OPEN-UNIQUE` y metadata de mapping/índices/PK clustered. El helper solo acredita duplicado exacto abierto y escuela distinta; no acredita todos los solapamientos.
+- Entidad, dos FK `NoAction`, siete checks, UQ exacto abierto sin filtro, auditoría/rowversion y dos índices con key/include exactos sin `Id` declarado: PASS.
+- `IT-CON-OVERLAP` completo no se declara ni se acredita todavía; V2-T039 permanece pendiente hasta integrar detección no exacta/carrera mediante el workflow `Serializable` de V2-T042.
+- Suites Debug y Release: 63 unitarias + 22 integración = 85/85 en cada configuración; filtro `Priority=P0`: 57 unitarias + 20 integración = 77/77 PASS; cero fallos/omitidas.
+- Restore, builds Debug/Release con cero warnings/errores, format, vulnerabilidades, diff, árbol OpenAPI y checksum `802c13b91bf5c6425d24c540b6841a2abe134e084ea310fc2b7041e32c24a81a`: PASS.
+- OpenSpec strict/show/status, `gentle-ai sdd-status` y drift de 103 task lines: PASS, 40/103 completas y V2-T039 primera pendiente.
+- Gate inmutable `git diff --numstat ea8335496badae0c4de4de81cb61a661a23f8da6...28e25a25546763b268a9565db466b79be6c52de7 -- | ./scripts/check-human-lines.py`: PASS, salida exacta `363`, sin excepción.
+- V2-T038,V2-T040,V2-T041: PASS. V2-T039 y V2-T042–V2-T043 permanecen pendientes; S06 no está cerrado.
 
 ## Notas operativas
 
