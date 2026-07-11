@@ -67,6 +67,7 @@ La salida esperada incluye `401` y `human gate failed: 401 > 400`; el último `t
 | Planificación (`EX-PLAN-2026-07-10`) | `1223630ab99bf1bfaa4f5919fccf5ff539379c8e` | N/A | `757b552ca3215371c0006d39bf0d0a14fabfdc11` | Excepción aprobada solo para este work unit documental; no es un PASS del gate S01. |
 | S01 | `757b552ca3215371c0006d39bf0d0a14fabfdc11` | `dbcdaf7628c1e4dffd89a7c92f4513e2c4c1df47` | `5dc32432d489eb342fed0221ff6b545036727b75` | PASS: manifest exacto y 360 líneas humanas, dentro del límite de 400. |
 | S02 | `1d627eba7acc46aed404e5d4bd818766a855adbb` | `1d627eba7acc46aed404e5d4bd818766a855adbb` | `0ecac062e5ef08114b0777fde53082f98840444a` | PASS: sin salida generada, 253 líneas humanas, dentro del límite de 400. |
+| S03 | `57d322974c9e177ecfa834ff39a11e6e5c4e7b97` | `57d322974c9e177ecfa834ff39a11e6e5c4e7b97` | `fb4309f52202c93b8b192d7393194089a56f2690` | PASS: sin salida generada, 338 líneas humanas, dentro del límite de 400. |
 
 ### Secuencia exacta ejecutada
 
@@ -74,6 +75,7 @@ La salida esperada incluye `401` y `human gate failed: 401 > 400`; el último `t
 2. `chore: add generated .NET scaffold` (`dbcdaf7628c1e4dffd89a7c92f4513e2c4c1df47`): solo las 16 rutas de `docs/generated-manifests/s01.txt`, en el estado producido por el SDK .NET `10.0.109` con `dotnet new`/`dotnet sln add`; el diff del manifest no produjo salida.
 3. `feat: customize S01 scaffold and smoke harness` (`5dc32432d489eb342fed0221ff6b545036727b75`): `.editorconfig`, `.gitignore`, `scripts/check-human-lines.py`, deltas humanos de templates, eliminaciones de placeholders y pruebas smoke/HTTP/gate. El rango humano inmutable produjo exactamente `360`.
 4. `docs: record S01 gate evidence`: solo este documento y `tasks.md`; registra evidencia sin mover `HUMAN_HEAD` y no usa `EX-PLAN-2026-07-10`.
+5. `feat: complete catalog protections and seeding` (`fb4309f52202c93b8b192d7393194089a56f2690`): work unit S03B de 11 rutas exclusivamente bajo `src/` y `tests/`; sin salida generada.
 
 ### Evidencia V2-T010
 
@@ -150,6 +152,19 @@ dotnet list package --vulnerable --include-transitive
 - `git diff --check 1d627eba7acc46aed404e5d4bd818766a855adbb...0ecac062e5ef08114b0777fde53082f98840444a`: PASS.
 - Gate inmutable `git diff --numstat 1d627eba7acc46aed404e5d4bd818766a855adbb...0ecac062e5ef08114b0777fde53082f98840444a -- | ./scripts/check-human-lines.py`: PASS, salida exacta `253`, dentro del límite de 400 y sin excepción.
 - V2-T017, V2-T018 y V2-T019: PASS. S02 cerrado; S03 queda habilitado.
+
+## Evidencia técnica S03 — 2026-07-11
+
+- `SLICE_BASE=HUMAN_BASE=57d322974c9e177ecfa834ff39a11e6e5c4e7b97`; `HUMAN_HEAD=fb4309f52202c93b8b192d7393194089a56f2690`; sin manifest/salida generada.
+- Testcontainers usó `mcr.microsoft.com/mssql/server:2022-CU14-ubuntu-22.04` (`sha256:c1aa8afe9b06eab64c9774a4802dcd032205d1be785b1fd51e1c0151e7586b74`), sin fallback externo.
+- `IT-CATALOG-SCHEMA-S03`, `IT-CATALOG-MUTABILITY-S03` e `IT-CATALOG-SINGLETON-S03`: 3/3 PASS; concurrencia y rollback/cleanup/retry de seed: 2/2 PASS.
+- Seed exacto Id=1/timestamps, recuperación vacía/parcial, conflicto 51010, dos callers independientes sin deadlock/duplicados, fallo inyectado 51020 con rollback y retry en la misma sesión: PASS.
+- Triggers case-sensitive, rol/permisos runtime, singleton anti-delete y startup configurado positivo/negativo: PASS contra cinco tablas catalog.
+- Suites Debug y Release: 22 unitarias + 10 integración, cero fallos/omitidas; filtro `Priority=P0`: 16 unitarias + 8 integración = 24/24 PASS.
+- Restore, builds Debug/Release con cero warnings/errores, format, vulnerabilidades, diff y OpenAPI: PASS.
+- OpenSpec strict/show/status, `gentle-ai sdd-status` y drift de 103 task lines: PASS, 26/103 completas y V2-T027 primera pendiente.
+- Gate inmutable `git diff --numstat 57d322974c9e177ecfa834ff39a11e6e5c4e7b97...fb4309f52202c93b8b192d7393194089a56f2690 -- | ./scripts/check-human-lines.py`: PASS, salida exacta `338`.
+- V2-T020 y V2-T023–V2-T026: PASS; S03 cerrado. S04/V2-T027 queda habilitado.
 
 ## Notas operativas
 

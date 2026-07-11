@@ -2,7 +2,7 @@
 
 **Rama de planificación**: `feat/production-data-model` | **Ejecución local actual**: `main` | **Fecha**: 2026-07-10 | **Especificación**: [spec.md](./spec.md)
 
-**Estado**: S01 y S02 completos; S03A parcial hasta `034ddc7`. V2-T021/V2-T022 están completos, V2-T020/V2-T023 permanecen parciales y V2-T024–V2-T103 pendientes. No existen migraciones ni `database/setup.sql`. Esta actualización documental no autoriza commit, merge ni push.
+**Estado**: S01–S03 completos hasta `fb4309f`; V2-T001–V2-T026 están cerradas y S04/V2-T027 es el siguiente slice. No existen migraciones ni `database/setup.sql`. Esta actualización documental no autoriza commit, merge ni push.
 
 **Task set ejecutable**: `production-model-v2.0.0` (`V2-T001`–`V2-T103`). Los IDs históricos `T001`–`T076` del baseline v1 están supersedidos y no son válidos para ejecución actual; ver [task-id-supersession.md](../../docs/task-id-supersession.md).
 
@@ -125,7 +125,7 @@ docs/{architecture,entity-relationship-model,testing-strategy,requirements-trace
 | --- | --- | --- | --- |
 | S01 | solución de tres proyectos y test harness HTTP; salida de scaffold aislada | planificación | PASS: gate inmutable 360, restore/build/tests/format verdes |
 | S02 | normalizador, auditoría/concurrencia y convenciones relacionales | S01 | PASS: gate inmutable 253 y SQL Server 2022 real verde |
-| S03 | cinco tablas de catálogo P0, singleton, checks y save behavior | S02 | S03A parcial en `034ddc7`: entidades/configuraciones y tres pruebas verdes; seed, fail-fast, triggers/permisos y gate final pendientes |
+| S03 | cinco tablas de catálogo P0, singleton, checks y save behavior | S02 | PASS: `fb4309f`, gate inmutable 338, SQL Server real y 24/24 P0 |
 | S04 | `Person` y roles duales | S03 | NFC/collation/roles/concurrencia |
 | S05 | `ClassGroup`/`Enrollment` y unicidad anual | S04 | FK compuesto/3NF/índices |
 | S06 | `TeacherContract` y cancelación/solapamiento | S04 | checks/Serializable/índices |
@@ -136,9 +136,9 @@ docs/{architecture,entity-relationship-model,testing-strategy,requirements-trace
 | S14–S17 | una capacidad P1 por slice | S13 | BQ aislada |
 | S18 | hardening y entrega | aplicables | suite y walkthrough |
 
-**Estado de ejecución hasta `034ddc7`**: S01 cerró con manifest exacto y gate humano 360; S02 cerró con gate 253 y SQL Server 2022 real mediante Testcontainers. S03A ya materializó las cinco entidades de catálogo, sus configuraciones SQL Server y tres pruebas parciales verdes; todavía debe completar V2-T020/V2-T023, seed, fail-fast y gate mediante V2-T024–V2-T026. No se acreditan aún triggers, permisos ni evidencia P0 completa. Los SHAs y comandos reproducibles de S01/S02 permanecen registrados en `docs/evaluator-execution.md`.
+**Estado de ejecución hasta `fb4309f`**: S01–S03 están cerrados. S03 acredita cinco tablas catalog, seed exacto/resiliente, startup fail-fast y protecciones SQL/runtime catalog-only mediante tres IDs S03 más concurrencia y rollback inyectado; el gate inmutable `57d3229...fb4309f` dio 338. S07 revalidará las protecciones P0 completas cuando existan 11 tablas y la migración manual.
 
-**Fallbacks predefinidos**: S03 se divide en tablas/configuración de catálogos y seed/startup check con evidencia parcial; no acredita triggers ni permisos. S07 se divide en migration generada, protecciones manuales y verificación completa posterior a V2-T045; S12 en setup, paridad/índices/permisos y runner/gate; S13 en modelo P1, migraciones/paridad y `listSubjects` end-to-end. Cada hijo conserva su propio manifest, `HUMAN_BASE`, gate ≤400 y rollback. No se improvisa una excepción para evitar la división.
+**Frontera S03/S07**: S03 instala y prueba triggers/permisos solo sobre cinco tablas catalog bajo IDs S03; S07 materializa 11 tablas y revalida las protecciones completas bajo `IT-IMMUTABILITY`, `IT-SINGLETON` e `IT-REFERENCE-PERMISSIONS`. Los fallbacks S07/S12/S13 conservan manifest, gate ≤400 y rollback; no se improvisan excepciones.
 
 ## Puertas
 

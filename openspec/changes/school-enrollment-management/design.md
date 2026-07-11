@@ -1,6 +1,6 @@
 # Design Mirror: School Enrollment Management
 
-> **Non-authoritative compatibility artifact for OpenSpec change `school-enrollment-management`.** This file is generated only for native OpenSpec dispatcher compatibility. It mirrors `specs/001-school-enrollment-management/` one way; it MUST NOT define, amend, or override design. On any drift, the canonical files listed below win and apply is blocked.
+> **Non-authoritative compatibility artifact.** It may mirror implementation progress from `specs/001-school-enrollment-management/`, but MUST NOT define or amend product behavior/design; canonical files win on drift.
 
 ## Authority and Source Map
 
@@ -34,7 +34,7 @@ Parity tests compare `sys.schemas`, `sys.tables`, `sys.columns`, `sys.default_co
 
 ## Current Execution Snapshot
 
-Verified repository HEAD `034ddc7`: S01 and S02 are complete; S03A is partial through catalog entities/mappings and executable partial catalog evidence for the five P0 catalog tables. S03 seed/startup checks and SQL triggers/permissions remain outside that partial evidence; migrations, full 11-table parity, API slices, and P1 remain later slices. This snapshot reports implementation state and does not alter canonical design.
+Verified HEAD `fb4309f`: S01–S03 and V2-T001–V2-T026 are complete. S03 proves five-table catalog schema, exact/resilient seed, startup singleton validation, direct-SQL immutability and runtime permissions; S07 later revalidates full 11-table P0 protections. S04/V2-T027 is next.
 
 ## Open Questions
 

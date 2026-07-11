@@ -6,7 +6,7 @@ description: "Tareas P0-first para el modelo de producción y capacidades escola
 
 # Tareas: gestión escolar con modelo de producción
 
-**Estado**: S01 y S02 completos; S03A parcial hasta `034ddc7`, con V2-T021/V2-T022 completos y V2-T020/V2-T023 parciales. Este documento publica el task set estable `production-model-v2.0.0`, con IDs `V2-T001`–`V2-T103`: 21 completos y 82 pendientes —2 de ellos parciales—. Existen solución, convenciones de persistencia y cinco entidades de catálogo; todavía no existen migraciones ni `database/setup.sql`.
+**Estado**: S01–S03 completos hasta `fb4309f`; V2-T001–V2-T026 están cerradas y S04/V2-T027 es el siguiente slice. Este documento publica el task set estable `production-model-v2.0.0`, con 26 tareas completas y 77 pendientes. Existen solución, convenciones de persistencia y cinco entidades de catálogo; todavía no existen migraciones ni `database/setup.sql`.
 
 Los IDs `T001`–`T076` del baseline `1223630ab99bf1bfaa4f5919fccf5ff539379c8e` pertenecen exclusivamente al task set v1 y **no se pueden usar para ejecución actual**. Sus reemplazos, retiros y descomposiciones están en [task-id-supersession.md](../../docs/task-id-supersession.md). La semántica histórica no se considera estable por coincidencia numérica.
 
@@ -76,7 +76,7 @@ El primer `diff` prueba que solo las rutas generadas declaradas quedaron fuera d
 
 Fallbacks definidos antes de apply, cada sub-slice sujeto al mismo gate:
 
-- **S03**: S03A `V2-T020`–`V2-T023`, gate en V2-T023 (cinco tablas de catálogo, checks y save behavior); S03B `V2-T024`–`V2-T026`, gate en V2-T026 (seed, startup check y pruebas parciales ejecutables sin acreditar triggers/permisos todavía).
+- **S03**: S03A materializó las cinco tablas/checks/save behavior; S03B cerró seed, startup, triggers/permisos catalog-only y resiliencia en `fb4309f`. S07 revalida las protecciones P0 completas sobre 11 tablas.
 - **S07**: S07A `V2-T044`, gate en V2-T044 (migración generada y manifest); S07B `V2-T045`, gate en V2-T045 (protecciones/permisos manuales); S07C `V2-T046`, gate en V2-T046 (apply/revert y evidencia P0 completa de 11 tablas, triggers, singleton y permisos).
 - **S12**: S12A `V2-T068`, gate en V2-T068 (setup transaccional); S12B `V2-T069`–`V2-T070`, gate en V2-T070 (paridad e índices/permisos); S12C `V2-T071`–`V2-T075`, gate en V2-T075 (runner, docs y walkthrough).
 - **S13**: S13A `V2-T076`–`V2-T080`, gate en V2-T080 (modelo/reglas P1); S13B `V2-T081`–`V2-T083`, gate en V2-T083 (migraciones y setup/paridad); S13C `V2-T084`–`V2-T087`, gate en V2-T087 (`listSubjects` end-to-end).
@@ -113,13 +113,13 @@ Fallbacks definidos antes de apply, cada sub-slice sujeto al mismo gate:
 
 ## Fase 3 / S03: catálogos P0 y singleton
 
-- [ ] V2-T020 [P] [REQ-053,REQ-056,REQ-058] Escribir `IT-CATALOG-SCHEMA-S03`, `IT-CATALOG-MUTABILITY-S03` e `IT-CATALOG-SINGLETON-S03` en `tests/Inovait.IntegrationTests/Persistence/CatalogModelTests.cs`; **Dep.** V2-T019; **Criterio** el fixture materializa únicamente `School`, `AcademicYear`, `AcademicConfiguration`, `Grade` y `DocumentType`; prueba schema/keys/checks/seed, save behavior de Code/Sector con cambios de Name permitidos y PK+CHECK+fail-fast del singleton, sin exigir las otras seis tablas P0, triggers SQL, rol runtime ni permisos; **Estado S03A** PARTIAL, tres casos `Priority=P0` verdes cubren el subconjunto previo a seed/fail-fast; V2-T024–V2-T026 deben completar ese criterio según el fallback, sin acreditar triggers/permisos todavía.
+- [x] V2-T020 [P] [REQ-053,REQ-056,REQ-058] Escribir `IT-CATALOG-SCHEMA-S03`, `IT-CATALOG-MUTABILITY-S03` e `IT-CATALOG-SINGLETON-S03` en `tests/Inovait.IntegrationTests/Persistence/CatalogModelTests.cs`; **Dep.** V2-T019; **Estado** PASS: 3/3 IDs contra cinco tablas SQL Server, con schema/keys/checks, seed exacto e idempotente, mutabilidad permitida/prohibida, singleton y startup; dos casos adicionales prueban concurrencia y rollback/cleanup/retry.
 - [x] V2-T021 [REQ-053,REQ-056–058] Crear `School`, `AcademicYear`, `AcademicConfiguration`, `Grade` y `DocumentType` en `src/Inovait.Core/Domain/Catalogs/`; **Dep.** V2-T020; **Estado** PASS, sin entidades people/academic/staff ni P1.
 - [x] V2-T022 [REQ-053,REQ-055–058] Configurar las cinco tablas, collation y FK en `src/Inovait.Infrastructure/Persistence/Configurations/`; **Dep.** V2-T021; **Criterio** `School`, `AcademicYear` y `Grade` reciben auditoría/check/rowversion; `AcademicConfiguration` y `DocumentType` no reciben auditoría genérica ni rowversion; cada required string conserva `LEN(TRIM([Column])) > 0`, limitado a vacío/espacios ordinarios directos; **Estado** PASS con tipos SQL Server, nombres, índices, checks/defaults/rowversion exactos y `NoAction`.
-- [ ] V2-T023 [REQ-056] Configurar save behavior y definir SQL de `TR_School_ProtectStableValues`, `TR_AcademicYear_ProtectCode` y `TR_Grade_ProtectCode` para el migration manual de protecciones; **Dep.** V2-T022; **Criterio condicional S03A** ejecutar gate ≤400 antes de merge si se activa el fallback; **Estado S03A** PARTIAL con `PropertySaveBehavior.Throw` verde y gate local ≤400; el SQL de triggers y toda evidencia de inmutabilidad ante SQL directo quedan diferidos a S03B/S07.
-- [ ] V2-T024 [REQ-056,REQ-058] Configurar seed Id=1 y definir rol database `[inovait_runtime]`, permisos y `TR_AcademicConfiguration_PreventDelete` para `ProductionCatalogSeed.cs` y el migration manual; **Dep.** V2-T022; **Criterio** `GRANT SELECT ON OBJECT::catalog.DocumentType TO [inovait_runtime]` y `DENY INSERT, UPDATE, DELETE ON OBJECT::catalog.DocumentType TO [inovait_runtime]` explícitos, además de restricciones del singleton.
-- [ ] V2-T025 [REQ-058] Implementar comprobación fail-fast del singleton en `src/Inovait.Infrastructure/Persistence/AcademicConfigurationStartupCheck.cs`; **Dep.** V2-T024.
-- [ ] V2-T026 Ejecutar contra SQL Server solo `IT-CATALOG-SCHEMA-S03`, `IT-CATALOG-MUTABILITY-S03` e `IT-CATALOG-SINGLETON-S03`, incluidos cambios permitidos de `Name`, y ejecutar el gate humano obligatorio; **Dep.** V2-T023–V2-T025; **Criterio** las tres evidencias verdes usan solo las cinco tablas disponibles en S03 y no acreditan `IT-SCHEMAS-P0`, `IT-IMMUTABILITY`, `IT-SINGLETON` ni `IT-REFERENCE-PERMISSIONS`; gate ≤400 o activar S03A/S03B, sin excepción.
+- [x] V2-T023 [REQ-056] Configurar save behavior y SQL idempotente de `TR_School_ProtectStableValues`, `TR_AcademicYear_ProtectCode` y `TR_Grade_ProtectCode`; **Dep.** V2-T022; **Estado** PASS con comparación binaria ante cambios solo de case, escritura SQL directa y cambios de `Name` permitidos.
+- [x] V2-T024 [REQ-056,REQ-058] Configurar seed Id=1, rol `[inovait_runtime]`, permisos y `TR_AcademicConfiguration_PreventDelete`; **Dep.** V2-T022; **Estado** PASS con IDs/timestamps exactos, recuperación vacía/parcial, conflicto lógico 51010, `IDENTITY_INSERT` transaccional, rol seguro e instalación idempotente.
+- [x] V2-T025 [REQ-058] Implementar fail-fast del singleton en `AcademicConfigurationStartupCheck.cs`; **Dep.** V2-T024; **Estado** PASS en el startup real configurado, positivo con Id=1 y negativo ante ausencia.
+- [x] V2-T026 Ejecutar las tres evidencias S03 y gate humano obligatorio; **Dep.** V2-T023–V2-T025; **Estado** PASS con `SLICE_BASE=HUMAN_BASE=57d322974c9e177ecfa834ff39a11e6e5c4e7b97`, `HUMAN_HEAD=fb4309f52202c93b8b192d7393194089a56f2690`, gate inmutable 338, 24/24 `Priority=P0`, suites Debug/Release, format, vulnerabilidades y diff verdes; no acredita los IDs P0 completos reservados para V2-T046.
 
 ## Fase 4 / S04: Person y roles independientes
 
@@ -238,7 +238,7 @@ Fallbacks definidos antes de apply, cada sub-slice sujeto al mismo gate:
 
 `V2-T001–V2-T004 → S01 V2-T005–V2-T010 → S02 V2-T011–V2-T019 → S03 V2-T020–V2-T026 → S04 V2-T027–V2-T031 → S05/S06 V2-T032–V2-T043 → S07 V2-T044–V2-T046 → S08–S11 V2-T047–V2-T067 → S12 V2-T068–V2-T075 → puerta P0 → S13 V2-T076–V2-T087 → S14–S17 V2-T088–V2-T099 → S18 V2-T100–V2-T103`.
 
-- Task set: `production-model-v2.0.0`; 103/103 tareas trazadas a requisito, escenario, quality gate, artefacto de entrega o infraestructura necesaria; 21 completas y 82 pendientes —V2-T020/V2-T023 parciales, 80 no iniciadas—. P0: V2-T001–V2-T075; P1 condicional: V2-T076–V2-T099; cierre: V2-T100–V2-T103.
+- Task set: `production-model-v2.0.0`; 103/103 tareas trazadas; 26 completas y 77 pendientes. S03 está cerrado y la primera pendiente es V2-T027. P0: V2-T001–V2-T075; P1 condicional: V2-T076–V2-T099; cierre: V2-T100–V2-T103.
 - Cobertura auditada: 63/63 requisitos y 35/35 escenarios; cero tareas huérfanas o fuera de alcance y cero requisitos/escenarios sin ruta de ejecución. No se agregan ni renumeran IDs.
 - REQ-053–REQ-063: mapeados en V2-T020–V2-T046, V2-T068–V2-T070, V2-T075–V2-T087 y V2-T102.
 - OpenAPI no se modifica: el refactor mantiene códigos documentales en la proyección y los 15 operationIds.

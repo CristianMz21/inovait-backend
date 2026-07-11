@@ -33,9 +33,9 @@ Testcontainers es la única puerta relacional automatizada. Una instancia extern
 
 | ID | Evidencia |
 | --- | --- |
-| `IT-CATALOG-SCHEMA-S03` | evidencia parcial ejecutable en S03: exactamente las cinco tablas `catalog` disponibles, con keys, checks y seed; no afirma el modelo P0 completo |
-| `IT-CATALOG-MUTABILITY-S03` | evidencia parcial ejecutable en S03: save behavior impide Code/Sector y permite Name; no afirma que los triggers SQL ya existan |
-| `IT-CATALOG-SINGLETON-S03` | evidencia parcial ejecutable en S03: PK+CHECK, seed y fail-fast sobre las cinco tablas; no afirma trigger ni permisos runtime |
+| `IT-CATALOG-SCHEMA-S03` | cinco tablas catalog: keys/checks y seed exacto, idempotente, vacío/parcial, concurrente y rollback-safe; no afirma el modelo P0 completo |
+| `IT-CATALOG-MUTABILITY-S03` | evidencia catalog-only: save behavior y triggers impiden Code/Sector incluso solo por case; Name permanece mutable |
+| `IT-CATALOG-SINGLETON-S03` | evidencia catalog-only: PK+CHECK, seed, startup positivo/fail-fast, anti-delete y permisos runtime sobre cinco tablas |
 | `IT-SCHEMAS-P0` | producida y ejecutada en S07 después de V2-T045: 11 tablas en schemas exactos; nunca `academic.AcademicYear` |
 | `IT-PERSON-COLLATION` | mismo tipo+número con variación de case colisiona; acento distinto no colisiona |
 | `IT-TEXT-CHECKS` | SQL directo con `''` o solo U+0020 falla por `LEN(TRIM)>0`; un valor solo tab/newline puede superar ese CHECK aislado, prueba negativa que fija la diferencia respecto del normalizador de aplicación |
@@ -92,7 +92,7 @@ Las pruebas consultan `sys.indexes` y `sys.index_columns`, distinguen key/includ
 
 ## Staging y manifests de evidencia
 
-S02 solo produce `UT-AUDIT-INTERCEPTOR` y un harness relacional con modelo probe propiedad del test. S03 materializa únicamente cinco tablas y por eso produce solo tres IDs parciales. Los IDs completos `IT-SCHEMAS-P0`, `IT-IMMUTABILITY`, `IT-SINGLETON` e `IT-REFERENCE-PERMISSIONS` se producen y ejecutan en V2-T046, después de que V2-T045 deja disponibles las 11 tablas P0, los cuatro triggers, el rol y sus permisos.
+S02 produce el harness probe. S03 posee tres IDs catalog-only y dos casos P0 auxiliares para concurrencia y rollback/cleanup de seed. V2-T046 revalida las protecciones completas mediante `IT-SCHEMAS-P0`, `IT-IMMUTABILITY`, `IT-SINGLETON` e `IT-REFERENCE-PERMISSIONS` después de materializar 11 tablas y la migración manual.
 
 ### Manifest P0 canónico: ID → productor único
 
