@@ -80,7 +80,7 @@ La salida esperada incluye `401` y `human gate failed: 401 > 400`; el último `t
 | S09 (V2-T052–V2-T057) | `86678088959216952592203345ba016d6356ceba` | `86678088959216952592203345ba016d6356ceba` | `5bb861ec9b228f102c16459038748166f5481f94` | PASS: sin salida generada, 365 líneas humanas, dentro del límite sin excepción; S09 cerrado. |
 | S10 (V2-T058–V2-T061) | `52cbb518f5f47aee8fda12e097cdbfb83f97bfb4` | `52cbb518f5f47aee8fda12e097cdbfb83f97bfb4` | `3212b4ee2f1ec4070fdb1b70d6ee823483fd5b57` | PASS: sin salida generada, 99 líneas humanas, dentro del límite sin excepción; S10 cerrado. |
 | S11 (V2-T062–V2-T067) | `5eb43965448010d6ee86acbed9ff7133738f9e82` | `5eb43965448010d6ee86acbed9ff7133738f9e82` | `21833491b5df294e776ad7439a8a06c5143d08c9` | PASS: sin salida generada, 274 líneas humanas, dentro del límite sin excepción; S11 cerrado. |
-| S12 (V2-T071–V2-T075) | `4cf41d055eb1df8f23d13178469c4ecf9a777e34` | `4cf41d055eb1df8f23d13178469c4ecf9a777e34` | `9e9433340e010a52a46cf530f761d7f72f153c8a` | PASS: S12C fallback aplicado, walkthroughs P0 y puerta `run-p0-tests.sh` en verde; 33 pruebas de walkthrough P0 + 151 pruebas `Priority=P0`, `human gate` = 329.
+| S12 (V2-T071–V2-T075) | `4cf41d055eb1df8f23d13178469c4ecf9a777e34` | `4cf41d055eb1df8f23d13178469c4ecf9a777e34` | `6ff0535bc80ae07a08a3a4cd61bae3dd47c2e12a` | PASS: S12C fallback aplicado, walkthroughs P0 y puerta `run-p0-tests.sh` en verde; 33 pruebas de walkthrough P0 + 151 pruebas `Priority=P0`, `human gate` = 329.
 
 ### Secuencia exacta ejecutada
 
@@ -97,7 +97,7 @@ La salida esperada incluye `401` y `human gate failed: 401 > 400`; el último `t
 11. `chore: add initial P0 production migration` (`130e642c053e02211268a407ac4dfd2746fc0363`): scaffold inicial, designer y snapshot EF de 11 tablas; tres de las cuatro rutas del manifest S07.
 12. `feat: add P0 database protections and migration evidence` (`a629a712bf7f3b7a7d994c3cec42a4391d28a0e2`): migration manual, designer generado y seis evidencias S07; el gate excluye las cuatro rutas generadas del manifest y cuenta 384 líneas humanas.
 13. `feat: add P0 evidence runner, compose and setup docs` (`4cf41d055eb1df8f23d13178469c4ecf9a777e34`): `scripts/run-p0-tests.sh`, `compose.yaml`, `database/setup.sql`, `README.md`, `quickstart.md` y `docs/evaluator-execution.md`.
-14. `docs: close S12 walkthrough/gate` (`9e9433340e010a52a46cf530f761d7f72f153c8a`): `specs/001-school-enrollment-management/tasks.md`, `openspec/changes/school-enrollment-management/tasks.md`, `openspec/changes/school-enrollment-management/state.yaml`; walkthrough P0 y gate `S12C` en verde.
+14. `docs: close S12 walkthrough/gate` (`6ff0535bc80ae07a08a3a4cd61bae3dd47c2e12a`): `specs/001-school-enrollment-management/tasks.md`, `openspec/changes/school-enrollment-management/tasks.md`, `openspec/changes/school-enrollment-management/state.yaml`; walkthrough P0 y gate `S12C` en verde.
 
 ### Evidencia V2-T010
 
@@ -320,7 +320,7 @@ dotnet list package --vulnerable --include-transitive
 ## Evidencia técnica S12 puerta P0 — 2026-07-11
 
 - `SLICE_BASE=HUMAN_BASE=4cf41d055eb1df8f23d13178469c4ecf9a777e34`
-- `HUMAN_HEAD=9e9433340e010a52a46cf530f761d7f72f153c8a`
+- `HUMAN_HEAD=6ff0535bc80ae07a08a3a4cd61bae3dd47c2e12a`
 - `GENERATED_MANIFEST` no aplica en S12C; S12A/S12B usan fallback por sobrepaso de presupuesto.
 - Entorno real validado:
   - `docker compose -f compose.yaml up -d --wait` con `MSSQL_SA_PASSWORD` externo.
@@ -335,7 +335,7 @@ dotnet list package --vulnerable --include-transitive
   - Bloque US3 (contratos): `TeacherContractEndpointsTests` + `TeacherContractConcurrencyTests`.
   - Resultado: `33 pruebas de integración P0` ejecutadas en verde.
 - `run-p0-tests.sh` + validaciones base en el estado de runner: `dotnet restore`, build, `dotnet format` y scan de vulnerables en PASS.
-- `git diff --numstat 4cf41d055eb1df8f23d13178469c4ecf9a777e34..9e9433340e010a52a46cf530f761d7f72f153c8a -- | ./scripts/check-human-lines.py` devolvió `329`.
+- `git diff --numstat 4cf41d055eb1df8f23d13178469c4ecf9a777e34..6ff0535bc80ae07a08a3a4cd61bae3dd47c2e12a -- | ./scripts/check-human-lines.py` devolvió `329`.
 - V2-T074 y V2-T075: PASS (S12C fallback por diseño, sin excepción `size:exception`).
 
 ## Notas operativas
