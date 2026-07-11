@@ -1,0 +1,22 @@
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+[*.cs]
+indent_style = space
+indent_size = 4
+tab_width = 4
+
+dotnet_diagnostic.IDE0005.severity = warning
+dotnet_diagnostic.CS8600.severity = warning
+dotnet_diagnostic.CS8601.severity = warning
+dotnet_diagnostic.CS1998.severity = warning
+
+csharp_new_line_before_else = true
+csharp_new_line_before_open_brace = all
+csharp_indent_case_contents_when_block = true
+csharp_indent_switch_labels = true

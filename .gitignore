@@ -8,6 +8,7 @@
 # Visual Studio / Rider
 .vs/
 .vscode/
+.idea/
 *.user
 *.userosscache
 *.suo
@@ -39,3 +40,5 @@ Thumbs.db
 *.tmp
 *.swp
 *.log
+*.local
+*.local.json

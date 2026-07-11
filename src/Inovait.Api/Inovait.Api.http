@@ -1,6 +1,11 @@
-@Inovait.Api_HostAddress = http://localhost:5079
+@Inovait.Api_HostAddress = http://localhost:5255
 
-GET {{Inovait.Api_HostAddress}}/weatherforecast/
+GET {{Inovait.Api_HostAddress}}/
+Accept: application/json
+
+###
+
+GET {{Inovait.Api_HostAddress}}/health
 Accept: application/json
 
 ###
