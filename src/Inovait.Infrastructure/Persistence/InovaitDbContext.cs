@@ -1,6 +1,7 @@
 using Inovait.Core.Domain.Academics;
 using Inovait.Core.Domain.Catalogs;
 using Inovait.Core.Domain.People;
+using Inovait.Core.Domain.Staff;
 using Inovait.Infrastructure.Persistence.Seed;
 using Microsoft.EntityFrameworkCore;
 
@@ -19,6 +20,7 @@ public sealed class InovaitDbContext(DbContextOptions<InovaitDbContext> options)
     public DbSet<Teacher> Teachers => Set<Teacher>();
     public DbSet<ClassGroup> ClassGroups => Set<ClassGroup>();
     public DbSet<Enrollment> Enrollments => Set<Enrollment>();
+    public DbSet<TeacherContract> TeacherContracts => Set<TeacherContract>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
