@@ -97,6 +97,29 @@ dotnet run --project src/Inovait.Api
 
 `database/setup.sql` futuro crea schemas, 11 tablas P0, constraints, índices/includes, triggers estrechos, seeds, singleton y permisos runtime; no crea database/login ni contiene credenciales. P1 agrega solo tres tablas y objetos asociados.
 
+## Entorno local validado (S12)
+
+`compose.yaml` levanta SQL Server 2022 CU14 para desarrollo y evaluación local, con `MSSQL_SA_PASSWORD` obligatorio y externo a Git:
+
+```bash
+export MSSQL_SA_PASSWORD='<clave-fuerte-propia>'
+export INOVAIT_SQL_PORT=14333   # opcional; por defecto 1433
+docker compose -f compose.yaml up -d --wait
+```
+
+La clave de conexión runtime de la API sigue siendo `ConnectionStrings__InovaitDatabase`:
+
+```bash
+export ConnectionStrings__InovaitDatabase="Server=localhost,${INOVAIT_SQL_PORT:-1433};Database=Inovait;User Id=sa;Password=$MSSQL_SA_PASSWORD;TrustServerCertificate=True"
+dotnet run --project src/Inovait.Api -c Release --no-build
+```
+
+`TrustServerCertificate=True` en este comando es una variable efímera y local contra el certificado autofirmado del contenedor, con la misma política que el fixture Testcontainers (`MsSqlBuilder`); nunca se versiona en configuración de producción.
+
+`database/setup.sql` se aplica sobre la base vacía con `sqlcmd` (dos ejecuciones consecutivas son un no-op seguro, verificado en el walkthrough de V2-T074).
+
+`./scripts/run-p0-tests.sh`, validado en V2-T071, parsea los 37 IDs del manifest canónico, verifica cada uno con `--list-tests --filter "Priority=P0&Evidence=<ID>"` y solo después corre la suite completa `Priority=P0`; termina con `P0 GATE PASSED: 37/37`.
+
 ## Ejecutar pruebas P0 futuras
 
 ```bash

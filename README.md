@@ -73,6 +73,17 @@ Las rutas previstas para S02 y posteriores son:
 - `database/setup.sql` mínimo para el evaluador;
 - conexión SQL Server externa solo como fallback aislado, no como segunda puerta obligatoria.
 
+## Entorno local validado (S12)
+
+`compose.yaml` levanta SQL Server 2022 CU14 (`ACCEPT_EULA=Y`, `MSSQL_SA_PASSWORD` externo a Git, puerto parametrizable, volumen nombrado y health check) para desarrollo y evaluación local:
+
+```bash
+export MSSQL_SA_PASSWORD='<clave-fuerte-propia>'
+docker compose -f compose.yaml up -d --wait
+```
+
+La API se apunta al contenedor con la misma clave runtime de siempre, `ConnectionStrings__InovaitDatabase`, y `database/setup.sql` se aplica con `sqlcmd` sobre la base vacía. El runner `./scripts/run-p0-tests.sh` valida los 37 IDs del manifest P0 canónico y termina con `P0 GATE PASSED: 37/37`. Detalle completo en [quickstart.md](specs/001-school-enrollment-management/quickstart.md).
+
 Consultar [quickstart.md](specs/001-school-enrollment-management/quickstart.md), [assessment-baseline.md](docs/assessment-baseline.md) y [requirements-traceability.md](docs/requirements-traceability.md).
 
 ## Fuera de alcance
