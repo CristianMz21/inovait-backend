@@ -42,3 +42,6 @@ Thumbs.db
 *.log
 *.local
 *.local.json
+
+# Agent tooling (derived caches; the registry .md itself is tracked)
+.atl/.skill-registry.cache.json
