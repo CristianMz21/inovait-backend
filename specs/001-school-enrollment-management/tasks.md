@@ -4,7 +4,7 @@ description: "Tareas P0-first para el modelo de producción y capacidades escola
 
 # Tareas: gestión escolar con modelo de producción
 
-**Estado**: S01–S09 y V2-T001–V2-T057 están cerrados; S08 cerró vía reconciliación de ledger del bundle `50ba6ed` + commit de salud `dbf431e`; S09 cerró con la evidencia targeted `IT-ENR-CREATE`/`IT-ENR-IDENTITY`/`IT-ENR-CONTEXT`/`IT-ENR-ATOMIC` agregada en `5bb861e`; V2-T058 es la primera pendiente. Este documento publica el task set estable `production-model-v2.0.0`, con 57 tareas completas y 46 pendientes. Existen el modelo, workflows `Serializable`, las migraciones P0, el host/catálogos API y la inscripción atómica; todavía falta `database/setup.sql`.
+**Estado**: S01–S10 y V2-T001–V2-T061 están cerrados; S08 cerró vía reconciliación de ledger del bundle `50ba6ed` + commit de salud `dbf431e`; S09 cerró con la evidencia targeted `IT-ENR-CREATE`/`IT-ENR-IDENTITY`/`IT-ENR-CONTEXT`/`IT-ENR-ATOMIC` agregada en `5bb861e`; S10 cerró con `UT-AGE` extraído a `AgeCalculator` compartido en `3212b4e` e `IT-ENR-FILTER` re-verificado; V2-T062 es la primera pendiente. Este documento publica el task set estable `production-model-v2.0.0`, con 61 tareas completas y 42 pendientes. Existen el modelo, workflows `Serializable`, las migraciones P0, el host/catálogos API, la inscripción atómica y la consulta de inscritos con edad compartida; todavía falta `database/setup.sql`.
 
 Los IDs `T001`–`T076` del baseline `1223630ab99bf1bfaa4f5919fccf5ff539379c8e` pertenecen exclusivamente al task set v1 y **no se pueden usar para ejecución actual**. Sus reemplazos, retiros y descomposiciones están en [task-id-supersession.md](../../docs/task-id-supersession.md). La semántica histórica no se considera estable por coincidencia numérica.
 
@@ -170,10 +170,10 @@ Fallbacks definidos antes de apply, cada sub-slice sujeto al mismo gate:
 
 ## Fase 10 / S10: US2 consulta de inscritos
 
-- [ ] V2-T058 [US2] [REQ-012–017] [SCN-008–012] Escribir `UT-AGE` en `tests/Inovait.UnitTests/Domain/AgeCalculatorTests.cs` e `IT-ENR-FILTER` en `tests/Inovait.IntegrationTests/Api/ListEnrollmentsTests.cs`; **Dep.** V2-T057; **Criterio** años cumplidos en límites 3/7/8/12/13, cumpleaños y fecha anterior al nacimiento, además de filtros conjuntos y orden HTTP.
-- [ ] V2-T059 [US2] [REQ-012–017,REQ-061] Implementar query desde ClassGroup→Enrollment→Student→Person/DocumentType en `src/Inovait.Infrastructure/Features/Enrollments/ListEnrollmentsQuery.cs`; **Dep.** V2-T058.
-- [ ] V2-T060 [US2] Crear DTO y `listEnrollments` en `src/Inovait.Api/Features/Enrollments/`; **Dep.** V2-T059.
-- [ ] V2-T061 Validar S10: filtros conjuntos, edad, vacío, orden, proyección documental estable y gate humano obligatorio; **Dep.** V2-T060; **Criterio** ≤400 o bloqueo sin excepción.
+- [x] V2-T058 [US2] [REQ-012–017] [SCN-008–012] Escribir `UT-AGE` en `tests/Inovait.UnitTests/Domain/AgeCalculatorTests.cs` e `IT-ENR-FILTER` en `tests/Inovait.IntegrationTests/Api/ListEnrollmentsTests.cs`; **Dep.** V2-T057; **Estado** PASS: `UT-AGE` nuevo (15 casos: límites 3/7/8/12/13 día-previo/cumpleaños, cumpleaños exacto, 29 de febrero → 1 de marzo en años no bisiestos, y fecha anterior al nacimiento con años negativos sin excepción) sobre `AgeCalculator` extraído a `src/Inovait.Core/Features/Enrollments/AgeCalculator.cs` en `3212b4e` con comportamiento bit-idéntico; `IT-ENR-FILTER` pre-existente en `CreateEnrollmentTests.cs` re-verificado (nota: el criterio original lo ubicaba en `ListEnrollmentsTests.cs`; el productor real vive en `CreateEnrollmentTests.cs` — desviación de layout documentada).
+- [x] V2-T059 [US2] [REQ-012–017,REQ-061] Implementar query desde ClassGroup→Enrollment→Student→Person/DocumentType en `src/Inovait.Infrastructure/Features/Enrollments/ListEnrollmentsQuery.cs`; **Dep.** V2-T058; **Estado** PASS: query ClassGroup→Enrollment→Student→Person/DocumentType entregada en bundle `50ba6ed` dentro de `src/Inovait.Api/Reads/EnrollmentReadService.cs` (desviación de layout vs `Infrastructure/Features/Enrollments/ListEnrollmentsQuery.cs` documentada en S08); ahora con edad vía `AgeCalculator` compartido.
+- [x] V2-T060 [US2] Crear DTO y `listEnrollments` en `src/Inovait.Api/Features/Enrollments/`; **Dep.** V2-T059; **Estado** PASS: DTO y `listEnrollments` entregados en bundle `50ba6ed` (`Contracts/Enrollments.cs`, `Endpoints/EnrollmentEndpoints.cs`).
+- [x] V2-T061 Validar S10: filtros conjuntos, edad, vacío, orden, proyección documental estable y gate humano obligatorio; **Dep.** V2-T060; **Estado** PASS: S10 validado (filtros conjuntos, edad, vacío, orden, proyección documental); gate humano obligatorio ejecutado con resultado HONESTO: `SLICE_BASE=HUMAN_BASE=52cbb518f5f47aee8fda12e097cdbfb83f97bfb4`, `HUMAN_HEAD=3212b4ee2f1ec4070fdb1b70d6ee823483fd5b57`, 99 líneas humanas ≤400, sin excepción. S10 cerrado; V2-T062 habilita S11.
 
 ## Fase 11 / S11: US3 contratos multiescuela
 
@@ -236,7 +236,7 @@ Fallbacks definidos antes de apply, cada sub-slice sujeto al mismo gate:
 
 `V2-T001–V2-T004 → S01 V2-T005–V2-T010 → S02 V2-T011–V2-T019 → S03 V2-T020–V2-T026 → S04 V2-T027–V2-T031 → S05/S06 V2-T032–V2-T043 → S07 V2-T044–V2-T046 → S08–S11 V2-T047–V2-T067 → S12 V2-T068–V2-T075 → puerta P0 → S13 V2-T076–V2-T087 → S14–S17 V2-T088–V2-T099 → S18 V2-T100–V2-T103`.
 
-- Task set: `production-model-v2.0.0`; 103/103 tareas trazadas; 57 completas y 46 pendientes. S01–S09 y V2-T001–V2-T057 están cerrados; la primera pendiente es V2-T058. P0: V2-T001–V2-T075; P1 condicional: V2-T076–V2-T099; cierre: V2-T100–V2-T103.
+- Task set: `production-model-v2.0.0`; 103/103 tareas trazadas; 61 completas y 42 pendientes. S01–S10 y V2-T001–V2-T061 están cerrados; la primera pendiente es V2-T062. P0: V2-T001–V2-T075; P1 condicional: V2-T076–V2-T099; cierre: V2-T100–V2-T103.
 - Cobertura auditada: 63/63 requisitos y 35/35 escenarios; cero tareas huérfanas o fuera de alcance y cero requisitos/escenarios sin ruta de ejecución. No se agregan ni renumeran IDs.
 - REQ-053–REQ-063: mapeados en V2-T020–V2-T046, V2-T068–V2-T070, V2-T075–V2-T087 y V2-T102.
 - OpenAPI no se modifica: el refactor mantiene códigos documentales en la proyección y los 15 operationIds.

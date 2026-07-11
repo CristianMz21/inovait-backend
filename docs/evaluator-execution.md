@@ -78,6 +78,7 @@ La salida esperada incluye `401` y `human gate failed: 401 > 400`; el último `t
 | S07 (V2-T044–V2-T046) | `0f777fbd17417b42351013c2477623808e55ce1f` | `130e642c053e02211268a407ac4dfd2746fc0363` | `a629a712bf7f3b7a7d994c3cec42a4391d28a0e2` | PASS: manifest exacto de cuatro rutas generadas y 384 líneas humanas excluyéndolas, sin excepción; S07 cerrado. |
 | S08 (V2-T047–V2-T051) | `1f2c246bce3b8e08c3dddb7ee36a284a9a5682eb` | `1f2c246bce3b8e08c3dddb7ee36a284a9a5682eb` | `dbf431ecadf4733160b8dba00638bde794c18e0d` | PASS con dispensa `EX-INTEGRITY-2026-07-11`: sin salida generada/manifest; gate humano inmutable mide `1976` líneas humanas (bundle `50ba6ed` aislado: 1556), supera 400; registrado por reconciliación S08–S11 autorizada por el usuario (completitud sobre tamaño de slice); S08 cerrado. |
 | S09 (V2-T052–V2-T057) | `86678088959216952592203345ba016d6356ceba` | `86678088959216952592203345ba016d6356ceba` | `5bb861ec9b228f102c16459038748166f5481f94` | PASS: sin salida generada, 365 líneas humanas, dentro del límite sin excepción; S09 cerrado. |
+| S10 (V2-T058–V2-T061) | `52cbb518f5f47aee8fda12e097cdbfb83f97bfb4` | `52cbb518f5f47aee8fda12e097cdbfb83f97bfb4` | `3212b4ee2f1ec4070fdb1b70d6ee823483fd5b57` | PASS: sin salida generada, 99 líneas humanas, dentro del límite sin excepción; S10 cerrado. |
 
 ### Secuencia exacta ejecutada
 
@@ -284,6 +285,19 @@ dotnet list package --vulnerable --include-transitive
 - OpenSpec strict/show/status, `gentle-ai sdd-status` y drift de 103 task lines: PASS, 57/103 completas y V2-T058 primera pendiente.
 - Gate humano inmutable `git diff --numstat 86678088959216952592203345ba016d6356ceba...5bb861ec9b228f102c16459038748166f5481f94 -- | ./scripts/check-human-lines.py`: PASS, salida exacta `365`, dentro del límite de 400 y sin excepción.
 - V2-T052–V2-T057: PASS. S09 cerrado; V2-T058 inicia S10.
+
+## Evidencia técnica S10 consulta de inscritos — 2026-07-11
+
+- `SLICE_BASE=HUMAN_BASE=52cbb518f5f47aee8fda12e097cdbfb83f97bfb4`; `HUMAN_HEAD=3212b4ee2f1ec4070fdb1b70d6ee823483fd5b57`; sin salida generada.
+- Composición: un solo commit `3212b4e` (refactor: extract AgeCalculator to Core and add UT-AGE coverage), 99 líneas humanas — `AgeCalculator.cs` extraído a `src/Inovait.Core/Features/Enrollments/` con comportamiento bit-idéntico al cálculo previamente embebido en `EnrollmentReadService.cs`, más `AgeCalculatorTests.cs` (68 líneas, 15 casos nuevos).
+- Fixture: Testcontainers con imagen fijada `mcr.microsoft.com/mssql/server:2022-CU14-ubuntu-22.04`; `ConnectionStrings__InovaitTest` explícitamente ausente del entorno.
+- Targeted `Evidence=UT-AGE|Evidence=IT-ENR-FILTER`: 15 unitarias (`UT-AGE` nuevo: límites 3/7/8/12/13 día-previo/cumpleaños, cumpleaños exacto, 29 de febrero → 1 de marzo en años no bisiestos, fecha anterior al nacimiento con años negativos sin excepción) + 1 integración (`IT-ENR-FILTER` pre-existente en `CreateEnrollmentTests.cs`, re-verificado; el criterio original lo ubicaba en `ListEnrollmentsTests.cs`, desviación de layout documentada) = 16/16 PASS.
+- Filtro `Priority=P0`: 80 unitarias + 60 integración = 140/140 PASS.
+- Suites Debug y Release completas: 86 unitarias + 64 integración = 150/150 en cada configuración; cero fallos/omitidas.
+- `dotnet restore`: PASS. Builds Debug y Release: PASS, cero warnings y cero errores. `dotnet format --verify-no-changes --no-restore`: PASS. `dotnet list package --vulnerable --include-transitive`: PASS, cero paquetes vulnerables en cinco proyectos. `git status --porcelain -- specs`: PASS, sin diferencias. Árbol OpenAPI y checksum `802c13b91bf5c6425d24c540b6841a2abe134e084ea310fc2b7041e32c24a81a`: PASS.
+- OpenSpec strict/show/status, `gentle-ai sdd-status` y drift de 103 task lines: PASS, 61/103 completas y V2-T062 primera pendiente.
+- Gate humano inmutable `git diff --numstat 52cbb518f5f47aee8fda12e097cdbfb83f97bfb4...3212b4ee2f1ec4070fdb1b70d6ee823483fd5b57 -- | ./scripts/check-human-lines.py`: PASS, salida exacta `99`, dentro del límite de 400 y sin excepción.
+- V2-T058–V2-T061: PASS. S10 cerrado; V2-T062 inicia S11.
 
 ## Notas operativas
 
