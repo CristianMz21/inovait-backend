@@ -51,7 +51,10 @@ public sealed class P0OpenApiTests(SqlServerFixture fixture) : IAsyncLifetime
         {
             student = new
             {
-                documentType = "CC", documentNumber = "77.001.001", firstNames = "Duplicate", lastNames = "Case",
+                documentType = "CC",
+                documentNumber = "77.001.001",
+                firstNames = "Duplicate",
+                lastNames = "Case",
                 birthDate = "2015-01-01",
             },
             schoolId = 1,
@@ -68,7 +71,10 @@ public sealed class P0OpenApiTests(SqlServerFixture fixture) : IAsyncLifetime
         {
             student = new
             {
-                documentType = "CC", documentNumber = "77.002.002", firstNames = "Mismatch", lastNames = "Case",
+                documentType = "CC",
+                documentNumber = "77.002.002",
+                firstNames = "Mismatch",
+                lastNames = "Case",
                 birthDate = "2015-01-01",
             },
             schoolId = secondSchool.Id,

@@ -61,7 +61,10 @@ public sealed class InvalidRequestTests(SqlServerFixture fixture) : IAsyncLifeti
         {
             student = new
             {
-                documentType = "CC", documentNumber = "55.002.002", firstNames = "Sin", lastNames = "Escuela",
+                documentType = "CC",
+                documentNumber = "55.002.002",
+                firstNames = "Sin",
+                lastNames = "Escuela",
                 birthDate = "2015-01-01",
             },
             academicYearId = 1,
