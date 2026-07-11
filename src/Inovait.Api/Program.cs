@@ -1,4 +1,7 @@
 using System.Text.Json;
+using Inovait.Api.Endpoints;
+using Inovait.Api.Errors;
+using Inovait.Api.Reads;
 using Inovait.Infrastructure;
 using Inovait.Infrastructure.Persistence;
 
@@ -15,9 +18,33 @@ var connectionString = builder.Configuration.GetConnectionString("InovaitDatabas
 if (!string.IsNullOrWhiteSpace(connectionString))
 {
     builder.Services.AddInovaitInfrastructure(connectionString);
+    builder.Services.AddScoped<CatalogReadService>();
+    builder.Services.AddScoped<EnrollmentReadService>();
+    builder.Services.AddScoped<TeacherContractReadService>();
+    builder.Services.AddScoped<ReferenceLookupService>();
 }
 
-builder.Services.AddProblemDetails();
+builder.Services.AddProblemDetails(options =>
+{
+    options.CustomizeProblemDetails = context =>
+    {
+        if (context.ProblemDetails.Extensions.ContainsKey("code"))
+        {
+            return;
+        }
+
+        context.ProblemDetails.Extensions["code"] = context.ProblemDetails.Status switch
+        {
+            StatusCodes.Status400BadRequest => "invalid_request",
+            StatusCodes.Status404NotFound => "resource_not_found",
+            StatusCodes.Status409Conflict => "history_conflict",
+            StatusCodes.Status422UnprocessableEntity => "business_rule_violation",
+            _ => "internal_error",
+        };
+    };
+});
+builder.Services.AddExceptionHandler<BadRequestExceptionHandler>();
+builder.Services.Configure<RouteHandlerOptions>(options => options.ThrowOnBadRequest = true);
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
@@ -45,6 +72,13 @@ if (app.Environment.IsDevelopment())
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 
 app.MapGet("/", () => new { service = "Inovait API", status = "ready" });
+
+if (!string.IsNullOrWhiteSpace(connectionString))
+{
+    app.MapCatalogEndpoints();
+    app.MapEnrollmentEndpoints();
+    app.MapTeacherContractEndpoints();
+}
 
 app.UseHttpsRedirection();
 app.UseCors();
