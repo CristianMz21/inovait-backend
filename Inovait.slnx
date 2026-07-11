@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Inovait.Api/Inovait.Api.csproj" />
+    <Project Path="src/Inovait.Core/Inovait.Core.csproj" />
+    <Project Path="src/Inovait.Infrastructure/Inovait.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Inovait.IntegrationTests/Inovait.IntegrationTests.csproj" />
+    <Project Path="tests/Inovait.UnitTests/Inovait.UnitTests.csproj" />
+  </Folder>
+</Solution>
