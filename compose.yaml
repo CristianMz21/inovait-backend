@@ -1,0 +1,46 @@
+# compose.yaml
+#
+# Local SQL Server 2022 for the Inovait API and the evaluator's manual
+# walkthroughs. This mirrors the image pinned by the integration test
+# fixture (tests/Inovait.IntegrationTests/Infrastructure/SqlServerFixture.cs).
+#
+# Usage:
+#   export MSSQL_SA_PASSWORD='<a-strong-password>'
+#   docker compose up -d
+#
+# The API does not read this file and no connection string is embedded here.
+# Point the API at this container yourself, e.g.:
+#   export ConnectionStrings__InovaitDatabase="Server=localhost,${INOVAIT_SQL_PORT:-1433};Database=Inovait;User Id=sa;Password=$MSSQL_SA_PASSWORD;TrustServerCertificate=true"
+#
+# Optional overrides:
+#   export INOVAIT_SQL_PORT=1434   # host port (container always listens on 1433)
+#
+# MSSQL_SA_PASSWORD is required from the environment and is never written to
+# this file; `docker compose` fails fast with the message below if it is
+# unset.
+
+services:
+  sql-server:
+    image: mcr.microsoft.com/mssql/server:2022-CU14-ubuntu-22.04
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD:?set MSSQL_SA_PASSWORD in your environment before running docker compose (see header comment)}
+    ports:
+      - "${INOVAIT_SQL_PORT:-1433}:1433"
+    volumes:
+      - inovait-sql-data:/var/opt/mssql
+    healthcheck:
+      # 2022 images ship sqlcmd under mssql-tools18, not mssql-tools. -C
+      # trusts the container's own self-signed TLS cert for this
+      # container-internal healthcheck only -- it is not a production
+      # client TLS setting and must not be reused as one.
+      test:
+        - CMD-SHELL
+        - /opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P "$$MSSQL_SA_PASSWORD" -Q "SELECT 1" -b -o /dev/null
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+volumes:
+  inovait-sql-data:
