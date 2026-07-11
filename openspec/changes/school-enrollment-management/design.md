@@ -34,7 +34,7 @@ Parity tests compare `sys.schemas`, `sys.tables`, `sys.columns`, `sys.default_co
 
 ## Current Execution Snapshot
 
-Verified HEAD `fb4309f`: S01–S03 and V2-T001–V2-T026 are complete. S03 proves five-table catalog schema, exact/resilient seed, startup singleton validation, direct-SQL immutability and runtime permissions; S07 later revalidates full 11-table P0 protections. S04/V2-T027 is next.
+Verified HEAD `e43c032`: S01–S04 and V2-T001–V2-T031 are complete. S04 proves composite Person identity, independent Student/Teacher PK+FK roles, exact people mappings, collation/check/index contracts and audit/rowversion allocation against real SQL Server. S05/V2-T032 is next; no Enrollment evidence is claimed.
 
 ## Open Questions
 

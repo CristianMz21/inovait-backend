@@ -10,14 +10,14 @@ Prior clarification and PRD review are complete, so no proposal question round i
 
 - Restore dispatcher-compatible execution metadata for the already-planned change.
 - Reference canonical requirements, design, and task progress without duplicating product behavior.
-- Resume implementation from the verified S03 closure at `fb4309f`; S04/V2-T027 is next.
+- Resume implementation from the verified S04 closure at `e43c032`; S05/V2-T032 is next.
 
 ## Scope
 
 ### In Scope
 - Mirror the validated P0 scope: `US1` enrollment, `US2` enrollment query, and `US3` multi-school teacher contracting.
 - Preserve the approved production model, task IDs, P0-before-P1 gate, `stacked-to-main` delivery, and 400-line human-review gate.
-- Continue from local `main` through `fb4309f`: S01–S03 and V2-T001–V2-T026 are complete with immutable evidence.
+- Continue from local `main` through `e43c032`: S01–S04 and V2-T001–V2-T031 are complete with immutable evidence.
 
 ### Out of Scope
 - New requirements, behavior, scope, IDs, or architecture decisions.
@@ -41,7 +41,7 @@ Use `specs/001-school-enrollment-management/spec.md` for behavior, `specs/001-sc
 ## Current Routing
 
 - Status: apply-ready.
-- Progress: 26 of 103 canonical tasks complete; 77 pending.
+- Progress: 31 of 103 canonical tasks complete; 72 pending.
 - Next recommended phase: `apply`.
 - Blocked reasons: none.
 
@@ -51,7 +51,7 @@ Use `specs/001-school-enrollment-management/spec.md` for behavior, `specs/001-sc
 |---|---|---|
 | `specs/001-school-enrollment-management/` | Reference only | Canonical requirements, design, model, and tasks |
 | `openspec/changes/school-enrollment-management/` | Compatibility metadata | Dispatcher-compatible proposal and state |
-| Existing implementation through `fb4309f` | Verified | Immutable S03 baseline for S04/V2-T027 |
+| Existing implementation through `e43c032` | Verified | Immutable S04 baseline for S05/V2-T032 |
 
 ## Risks
 
@@ -72,6 +72,6 @@ Remove only this compatibility mirror. Future implementation rollback remains th
 
 ## Success Criteria
 
-- [x] With proposal, specification, design, and tasks present, OpenSpec dispatches next to `apply` at 26/103 progress without changing canonical behavior.
+- [x] With proposal, specification, design, and tasks present, OpenSpec dispatches next to `apply` at 31/103 progress without changing canonical behavior.
 - [x] All 63 canonical requirement IDs and 35 canonical scenarios remain referenced unchanged rather than duplicated into OpenSpec.
-- [x] S01–S03 completion through immutable commit `fb4309f` is preserved as the implementation baseline.
+- [x] S01–S04 completion through immutable commit `e43c032` is preserved as the implementation baseline.

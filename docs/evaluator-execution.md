@@ -68,6 +68,7 @@ La salida esperada incluye `401` y `human gate failed: 401 > 400`; el último `t
 | S01 | `757b552ca3215371c0006d39bf0d0a14fabfdc11` | `dbcdaf7628c1e4dffd89a7c92f4513e2c4c1df47` | `5dc32432d489eb342fed0221ff6b545036727b75` | PASS: manifest exacto y 360 líneas humanas, dentro del límite de 400. |
 | S02 | `1d627eba7acc46aed404e5d4bd818766a855adbb` | `1d627eba7acc46aed404e5d4bd818766a855adbb` | `0ecac062e5ef08114b0777fde53082f98840444a` | PASS: sin salida generada, 253 líneas humanas, dentro del límite de 400. |
 | S03 | `57d322974c9e177ecfa834ff39a11e6e5c4e7b97` | `57d322974c9e177ecfa834ff39a11e6e5c4e7b97` | `fb4309f52202c93b8b192d7393194089a56f2690` | PASS: sin salida generada, 338 líneas humanas, dentro del límite de 400. |
+| S04 | `8136dc0cfde187b39a4c211fdff63de24ec3fb89` | `8136dc0cfde187b39a4c211fdff63de24ec3fb89` | `e43c032c648beda45febcbd4b8fcf4282d0bfdf1` | PASS: sin salida generada, 394 líneas humanas, dentro del límite de 400. |
 
 ### Secuencia exacta ejecutada
 
@@ -76,6 +77,7 @@ La salida esperada incluye `401` y `human gate failed: 401 > 400`; el último `t
 3. `feat: customize S01 scaffold and smoke harness` (`5dc32432d489eb342fed0221ff6b545036727b75`): `.editorconfig`, `.gitignore`, `scripts/check-human-lines.py`, deltas humanos de templates, eliminaciones de placeholders y pruebas smoke/HTTP/gate. El rango humano inmutable produjo exactamente `360`.
 4. `docs: record S01 gate evidence`: solo este documento y `tasks.md`; registra evidencia sin mover `HUMAN_HEAD` y no usa `EX-PLAN-2026-07-10`.
 5. `feat: complete catalog protections and seeding` (`fb4309f52202c93b8b192d7393194089a56f2690`): work unit S03B de 11 rutas exclusivamente bajo `src/` y `tests/`; sin salida generada.
+6. `feat: add person identity and role model` (`e43c032c648beda45febcbd4b8fcf4282d0bfdf1`): work unit S04 de 11 rutas exclusivamente bajo `src/` y `tests/`; sin salida generada.
 
 ### Evidencia V2-T010
 
@@ -165,6 +167,18 @@ dotnet list package --vulnerable --include-transitive
 - OpenSpec strict/show/status, `gentle-ai sdd-status` y drift de 103 task lines: PASS, 26/103 completas y V2-T027 primera pendiente.
 - Gate inmutable `git diff --numstat 57d322974c9e177ecfa834ff39a11e6e5c4e7b97...fb4309f52202c93b8b192d7393194089a56f2690 -- | ./scripts/check-human-lines.py`: PASS, salida exacta `338`.
 - V2-T020 y V2-T023–V2-T026: PASS; S03 cerrado. S04/V2-T027 queda habilitado.
+
+## Evidencia técnica S04 — 2026-07-11
+
+- `SLICE_BASE=HUMAN_BASE=8136dc0cfde187b39a4c211fdff63de24ec3fb89`; `HUMAN_HEAD=e43c032c648beda45febcbd4b8fcf4282d0bfdf1`; sin manifest/salida generada.
+- Testcontainers usó `mcr.microsoft.com/mssql/server:2022-CU14-ubuntu-22.04` (`sha256:c1aa8afe9b06eab64c9774a4802dcd032205d1be785b1fd51e1c0151e7586b74`), con fallback externo deshabilitado.
+- `UT-IDENTITY`: 9/9 PASS; `IT-PERSON-COLLATION`, `IT-PERSON-DUAL-ROLE` e `IT-TEXT-CHECKS`: 3/3 PASS contra SQL Server real.
+- Identidad compuesta por tipo+número, NFC/case/acento, conflicto de nombres/nacimiento, fecha futura, roles duales, checks de whitespace por frontera, PK/FK/auditoría/rowversion e índices exactos: PASS.
+- Suites Debug y Release: 31 unitarias + 13 integración = 44/44 en cada configuración; filtro `Priority=P0`: 25 unitarias + 11 integración = 36/36 PASS; cero fallos/omitidas.
+- Restore, builds Debug/Release con cero warnings/errores, format, vulnerabilidades, diff y OpenAPI/checksum: PASS.
+- OpenSpec strict/show/status, `gentle-ai sdd-status` y drift de 103 task lines: PASS, 31/103 completas y V2-T032 primera pendiente.
+- Gate inmutable `git diff --numstat 8136dc0cfde187b39a4c211fdff63de24ec3fb89...e43c032c648beda45febcbd4b8fcf4282d0bfdf1 -- | ./scripts/check-human-lines.py`: PASS, salida exacta `394`.
+- V2-T027–V2-T031: PASS; S04 cerrado. V2-T032 permanece pendiente y S05 queda habilitado.
 
 ## Notas operativas
 

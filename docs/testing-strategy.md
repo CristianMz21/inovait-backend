@@ -22,7 +22,7 @@ Testcontainers es la única puerta relacional automatizada. Una instancia extern
 | --- | --- |
 | `UT-TEXT-NORMALIZATION` | NFC de secuencias equivalentes; whitespace Unicode exterior; tabs/newlines/whitespace interno→un espacio; required whitespace-only→rechazo; diacríticos y puntuación preservados; idempotencia |
 | `UT-AUDIT-INTERCEPTOR` | con dobles disponibles en S02: reloj determinista, alta/modificación, preservación de creación y actualización genérica; no acredita entidades/tablas P0 o P1 |
-| `UT-IDENTITY` | igualdad CI_AS conceptual por tipo/número canónico; conflicto de nombres/nacimiento; mismo `Person` con roles duales |
+| `UT-IDENTITY` | igualdad CI_AS conceptual por tipo+número canónico; mismo número con tipo distinto es identidad nueva; conflicto de nombres/nacimiento, límite de fecha y rol dual sin duplicación |
 | `UT-AGE` | límites 3/7/8/12/13, cumpleaños y fecha anterior al nacimiento |
 | `UT-CONTRACT-OVERLAP` | intervalos separados, toque inclusivo, contenido y fin abierto |
 | `UT-CONTRACT-CANCELLATION` | Confirmed sin datos; Cancelled con tres datos; razón whitespace; fecha fuera del contrato |
@@ -37,9 +37,9 @@ Testcontainers es la única puerta relacional automatizada. Una instancia extern
 | `IT-CATALOG-MUTABILITY-S03` | evidencia catalog-only: save behavior y triggers impiden Code/Sector incluso solo por case; Name permanece mutable |
 | `IT-CATALOG-SINGLETON-S03` | evidencia catalog-only: PK+CHECK, seed, startup positivo/fail-fast, anti-delete y permisos runtime sobre cinco tablas |
 | `IT-SCHEMAS-P0` | producida y ejecutada en S07 después de V2-T045: 11 tablas en schemas exactos; nunca `academic.AcademicYear` |
-| `IT-PERSON-COLLATION` | mismo tipo+número con variación de case colisiona; acento distinto no colisiona |
+| `IT-PERSON-COLLATION` | mismo tipo+número con variación de case colisiona; acento distinto no colisiona; UQ e índice de nombres conservan nombre, orden de keys e INCLUDE exactos |
 | `IT-TEXT-CHECKS` | SQL directo con `''` o solo U+0020 falla por `LEN(TRIM)>0`; un valor solo tab/newline puede superar ese CHECK aislado, prueba negativa que fija la diferencia respecto del normalizador de aplicación |
-| `IT-PERSON-DUAL-ROLE` | un `PersonId` admite `Student` y `Teacher`; roles no duplican identidad |
+| `IT-PERSON-DUAL-ROLE` | un `PersonId` admite `Student` y `Teacher`; roles no duplican identidad y fijan schema/tabla/PK/FK/dependent/principal exactos, con auditoría solo donde corresponde |
 | `IT-AUDIT-UTC-P0` | después de materializar P0: positivo exacto en `School`, `AcademicYear`, `Grade`, `ClassGroup`, `Person`, `Teacher`, `TeacherContract`, con ambos defaults/check y update real que preserva creación; `Enrollment` solo `CreatedAtUtc`; negativo en `DocumentType`, `Student`, `AcademicConfiguration` |
 | `IT-ROWVERSION-P0` | después de materializar P0: token y conflicto entre dos contextos exactamente para las siete entidades auditables P0; ausencia en `Enrollment`, `DocumentType`, `Student`, `AcademicConfiguration` |
 | `IT-SINGLETON` | producida y ejecutada en S07 después de V2-T045: PK+CHECK bloquean segundo Id; seed Id=1 existe; runtime no inserta/elimina; trigger bloquea delete; ausencia simulada provoca fail-fast |
@@ -92,7 +92,7 @@ Las pruebas consultan `sys.indexes` y `sys.index_columns`, distinguen key/includ
 
 ## Staging y manifests de evidencia
 
-S02 produce el harness probe. S03 posee tres IDs catalog-only y dos casos P0 auxiliares para concurrencia y rollback/cleanup de seed. V2-T046 revalida las protecciones completas mediante `IT-SCHEMAS-P0`, `IT-IMMUTABILITY`, `IT-SINGLETON` e `IT-REFERENCE-PERMISSIONS` después de materializar 11 tablas y la migración manual.
+S02 produce el harness probe. S03 posee tres IDs catalog-only y dos casos P0 auxiliares para concurrencia y rollback/cleanup de seed. S04 produce `UT-IDENTITY` y los tres IDs `IT-PERSON-*`/`IT-TEXT-CHECKS` contra `Person` y roles reales. V2-T046 revalida las protecciones completas mediante `IT-SCHEMAS-P0`, `IT-IMMUTABILITY`, `IT-SINGLETON` e `IT-REFERENCE-PERMISSIONS` después de materializar 11 tablas y la migración manual.
 
 ### Manifest P0 canónico: ID → productor único
 

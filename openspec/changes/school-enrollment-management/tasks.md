@@ -6,7 +6,7 @@ description: "Tareas P0-first para el modelo de producción y capacidades escola
 
 # Tareas: gestión escolar con modelo de producción
 
-**Estado**: S01–S03 completos hasta `fb4309f`; V2-T001–V2-T026 están cerradas y S04/V2-T027 es el siguiente slice. Este documento publica el task set estable `production-model-v2.0.0`, con 26 tareas completas y 77 pendientes. Existen solución, convenciones de persistencia y cinco entidades de catálogo; todavía no existen migraciones ni `database/setup.sql`.
+**Estado**: S01–S04 completos hasta `e43c032`; V2-T001–V2-T031 están cerradas y S05/V2-T032 es el siguiente slice. Este documento publica el task set estable `production-model-v2.0.0`, con 31 tareas completas y 72 pendientes. Existen solución, convenciones de persistencia, cinco entidades de catálogo y `Person` con roles independientes; todavía no existen `ClassGroup`, `Enrollment`, migraciones ni `database/setup.sql`.
 
 Los IDs `T001`–`T076` del baseline `1223630ab99bf1bfaa4f5919fccf5ff539379c8e` pertenecen exclusivamente al task set v1 y **no se pueden usar para ejecución actual**. Sus reemplazos, retiros y descomposiciones están en [task-id-supersession.md](../../docs/task-id-supersession.md). La semántica histórica no se considera estable por coincidencia numérica.
 
@@ -123,11 +123,11 @@ Fallbacks definidos antes de apply, cada sub-slice sujeto al mismo gate:
 
 ## Fase 4 / S04: Person y roles independientes
 
-- [ ] V2-T027 [P] [REQ-001–006,REQ-054,REQ-055] Escribir `UT-IDENTITY` en `tests/Inovait.UnitTests/Domain/IdentityResolverTests.cs` y `IT-PERSON-COLLATION`, `IT-PERSON-DUAL-ROLE`, `IT-TEXT-CHECKS` en `tests/Inovait.IntegrationTests/Persistence/PersonRoleTests.cs`; **Dep.** V2-T026; **Criterio** la unitaria cubre igualdad conceptual tipo+número, conflicto de nombres/nacimiento y rol dual; SQL directo rechaza `''` y solo U+0020 mediante `LEN(TRIM)>0`, mientras una prueba negativa fija que tab/newline-only puede superar ese CHECK aislado y V2-T011/V2-T014 lo rechaza en aplicación.
-- [ ] V2-T028 [REQ-054,REQ-057] Crear `Person`, `Student` y `Teacher` en `src/Inovait.Core/Domain/People/`; **Dep.** V2-T027; **Criterio** `Person` y `Teacher` son auditables/concurrentes; `Student` no tiene auditoría genérica ni rowversion.
-- [ ] V2-T029 [REQ-054,REQ-055,REQ-057] Crear configuraciones PK+FK independientes, UQ CI_AS, checks e índice de nombres en `src/Inovait.Infrastructure/Persistence/Configurations/{Person,Student,Teacher}Configuration.cs`; **Dep.** V2-T028; **Criterio** auditoría/check/rowversion solo en `Person` y `Teacher`, nunca en `Student`.
-- [ ] V2-T030 [REQ-001–005,REQ-054,REQ-055] Implementar resolución `DocumentType.Code`/`Person` y conflicto de identidad en `src/Inovait.Core/Features/Enrollments/IdentityResolver.cs` y puerto específico; **Dep.** V2-T029.
-- [ ] V2-T031 Validar S04 con NFC/case/acento, ambas capas de whitespace, datos discrepantes y una persona con ambos roles, y ejecutar el gate humano obligatorio; **Dep.** V2-T030; **Criterio** ≤400 o bloqueo sin excepción.
+- [x] V2-T027 [P] [REQ-001–006,REQ-054,REQ-055] Escribir `UT-IDENTITY` en `tests/Inovait.UnitTests/Domain/IdentityResolverTests.cs` y `IT-PERSON-COLLATION`, `IT-PERSON-DUAL-ROLE`, `IT-TEXT-CHECKS` en `tests/Inovait.IntegrationTests/Persistence/PersonRoleTests.cs`; **Dep.** V2-T026; **Estado** PASS con 9 casos `UT-IDENTITY` y 3/3 IDs relacionales contra SQL Server real: identidad compuesta tipo+número, conflictos, fecha futura, roles duales, collation y ambas fronteras de whitespace.
+- [x] V2-T028 [REQ-054,REQ-057] Crear `Person`, `Student` y `Teacher` en `src/Inovait.Core/Domain/People/`; **Dep.** V2-T027; **Estado** PASS: `Person` y `Teacher` son auditables/concurrentes; `Student` es solo marcador PK+FK sin auditoría ni rowversion.
+- [x] V2-T029 [REQ-054,REQ-055,REQ-057] Crear configuraciones PK+FK independientes, UQ CI_AS, checks e índice de nombres en `src/Inovait.Infrastructure/Persistence/Configurations/{Person,Student,Teacher}Configuration.cs`; **Dep.** V2-T028; **Estado** PASS con schemas/tablas, PK/FK, collation, checks, auditoría/rowversion e índices key/include exactos, incluido negativo para `Student`.
+- [x] V2-T030 [REQ-001–005,REQ-054,REQ-055] Implementar resolución `DocumentType.Code`/`Person` y conflicto de identidad en `src/Inovait.Core/Features/Enrollments/IdentityResolver.cs` y puerto específico; **Dep.** V2-T029; **Estado** PASS con normalización, tipo+número compuesto, alta/reuso/conflicto y creación de rol solo cuando falta.
+- [x] V2-T031 Validar S04 con NFC/case/acento, ambas capas de whitespace, datos discrepantes y una persona con ambos roles, y ejecutar el gate humano obligatorio; **Dep.** V2-T030; **Estado** PASS con `SLICE_BASE=HUMAN_BASE=8136dc0cfde187b39a4c211fdff63de24ec3fb89`, `HUMAN_HEAD=e43c032c648beda45febcbd4b8fcf4282d0bfdf1`, gate inmutable 394, exact S04 12/12, `Priority=P0` 36/36 y suites Debug/Release 44/44; sin excepción.
 
 ## Fase 5 / S05: ClassGroup y Enrollment
 
@@ -238,7 +238,7 @@ Fallbacks definidos antes de apply, cada sub-slice sujeto al mismo gate:
 
 `V2-T001–V2-T004 → S01 V2-T005–V2-T010 → S02 V2-T011–V2-T019 → S03 V2-T020–V2-T026 → S04 V2-T027–V2-T031 → S05/S06 V2-T032–V2-T043 → S07 V2-T044–V2-T046 → S08–S11 V2-T047–V2-T067 → S12 V2-T068–V2-T075 → puerta P0 → S13 V2-T076–V2-T087 → S14–S17 V2-T088–V2-T099 → S18 V2-T100–V2-T103`.
 
-- Task set: `production-model-v2.0.0`; 103/103 tareas trazadas; 26 completas y 77 pendientes. S03 está cerrado y la primera pendiente es V2-T027. P0: V2-T001–V2-T075; P1 condicional: V2-T076–V2-T099; cierre: V2-T100–V2-T103.
+- Task set: `production-model-v2.0.0`; 103/103 tareas trazadas; 31 completas y 72 pendientes. S04 está cerrado y la primera pendiente es V2-T032. P0: V2-T001–V2-T075; P1 condicional: V2-T076–V2-T099; cierre: V2-T100–V2-T103.
 - Cobertura auditada: 63/63 requisitos y 35/35 escenarios; cero tareas huérfanas o fuera de alcance y cero requisitos/escenarios sin ruta de ejecución. No se agregan ni renumeran IDs.
 - REQ-053–REQ-063: mapeados en V2-T020–V2-T046, V2-T068–V2-T070, V2-T075–V2-T087 y V2-T102.
 - OpenAPI no se modifica: el refactor mantiene códigos documentales en la proyección y los 15 operationIds.
