@@ -9,7 +9,10 @@ public sealed class AcademicConfigurationConfiguration : IEntityTypeConfiguratio
     public void Configure(EntityTypeBuilder<AcademicConfiguration> builder)
     {
         builder.ToTable("AcademicConfiguration", "catalog", table =>
-            table.HasCheckConstraint("CK_AcademicConfiguration_Singleton", "[Id] = 1"));
+        {
+            table.HasTrigger("TR_AcademicConfiguration_PreventDelete");
+            table.HasCheckConstraint("CK_AcademicConfiguration_Singleton", "[Id] = 1");
+        });
         builder.HasKey(entity => entity.Id).HasName("PK_AcademicConfiguration");
         builder.Property(entity => entity.Id).HasColumnType("tinyint").ValueGeneratedNever();
         builder.HasOne<AcademicYear>().WithMany().HasForeignKey(entity => entity.CurrentAcademicYearId)

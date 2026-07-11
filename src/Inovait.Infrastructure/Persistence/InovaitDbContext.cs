@@ -1,4 +1,5 @@
 using Inovait.Core.Domain.Catalogs;
+using Inovait.Infrastructure.Persistence.Seed;
 using Microsoft.EntityFrameworkCore;
 
 namespace Inovait.Infrastructure.Persistence;
@@ -15,5 +16,6 @@ public sealed class InovaitDbContext(DbContextOptions<InovaitDbContext> options)
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(InovaitDbContext).Assembly);
+        ProductionCatalogSeed.Apply(modelBuilder);
     }
 }

@@ -10,6 +10,7 @@ public sealed class SchoolConfiguration : IEntityTypeConfiguration<School>
     {
         builder.ToTable("School", "catalog", table =>
         {
+            table.HasTrigger("TR_School_ProtectStableValues");
             table.HasCheckConstraint("CK_School_Code_NotBlank", "LEN(TRIM([Code])) > 0");
             table.HasCheckConstraint("CK_School_Name_NotBlank", "LEN(TRIM([Name])) > 0");
             table.HasCheckConstraint("CK_School_Sector_NotBlank", "LEN(TRIM([Sector])) > 0");

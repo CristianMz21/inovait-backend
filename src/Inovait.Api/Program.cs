@@ -1,4 +1,6 @@
 using System.Text.Json;
+using Inovait.Infrastructure;
+using Inovait.Infrastructure.Persistence;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -9,6 +11,11 @@ builder.Services.ConfigureHttpJsonOptions(options =>
 
 var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
     ?? Array.Empty<string>();
+var connectionString = builder.Configuration.GetConnectionString("InovaitDatabase");
+if (!string.IsNullOrWhiteSpace(connectionString))
+{
+    builder.Services.AddInovaitInfrastructure(connectionString);
+}
 
 builder.Services.AddProblemDetails();
 builder.Services.AddCors(options =>
@@ -22,6 +29,13 @@ builder.Services.AddCors(options =>
 });
 
 var app = builder.Build();
+
+if (!string.IsNullOrWhiteSpace(connectionString))
+{
+    await using var scope = app.Services.CreateAsyncScope();
+    await scope.ServiceProvider.GetRequiredService<AcademicConfigurationStartupCheck>()
+        .EnsurePresentAsync();
+}
 
 if (app.Environment.IsDevelopment())
 {

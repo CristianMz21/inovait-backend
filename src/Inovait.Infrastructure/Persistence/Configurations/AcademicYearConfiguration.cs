@@ -10,6 +10,7 @@ public sealed class AcademicYearConfiguration : IEntityTypeConfiguration<Academi
     {
         builder.ToTable("AcademicYear", "catalog", table =>
         {
+            table.HasTrigger("TR_AcademicYear_ProtectCode");
             table.HasCheckConstraint("CK_AcademicYear_Code_NotBlank", "LEN(TRIM([Code])) > 0");
             table.HasCheckConstraint("CK_AcademicYear_Name_NotBlank", "LEN(TRIM([Name])) > 0");
             table.HasCheckConstraint("CK_AcademicYear_DateRange", "[EndDate] >= [StartDate]");

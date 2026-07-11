@@ -21,6 +21,7 @@ public static class DependencyInjection
         services.AddSingleton<ITextNormalizer, TextNormalizer>();
         services.AddSingleton<TextNormalizationInterceptor>();
         services.AddSingleton<AuditSaveChangesInterceptor>();
+        services.AddScoped<AcademicConfigurationStartupCheck>();
         services.AddDbContext<InovaitDbContext>((provider, options) =>
             options.UseSqlServer(connectionString)
                 .AddInterceptors(

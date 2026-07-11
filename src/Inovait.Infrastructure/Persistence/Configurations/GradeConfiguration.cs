@@ -10,6 +10,7 @@ public sealed class GradeConfiguration : IEntityTypeConfiguration<Grade>
     {
         builder.ToTable("Grade", "catalog", table =>
         {
+            table.HasTrigger("TR_Grade_ProtectCode");
             table.HasCheckConstraint("CK_Grade_Code_NotBlank", "LEN(TRIM([Code])) > 0");
             table.HasCheckConstraint("CK_Grade_Name_NotBlank", "LEN(TRIM([Name])) > 0");
             table.HasCheckConstraint("CK_Grade_SortOrder", "[SortOrder] > 0");
