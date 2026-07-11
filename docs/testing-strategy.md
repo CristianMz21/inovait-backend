@@ -92,7 +92,7 @@ Las pruebas consultan `sys.indexes` y `sys.index_columns`, distinguen key/includ
 
 ## Staging y manifests de evidencia
 
-S02 produce el harness probe. S03 posee tres IDs catalog-only y dos casos P0 auxiliares para concurrencia y rollback/cleanup de seed. S04 produce `UT-IDENTITY` y los tres IDs `IT-PERSON-*`/`IT-TEXT-CHECKS` contra `Person` y roles reales. S05/V2-T032 produce `IT-ENR-ANNUAL`, `IT-NORMAL-FORMS` y assertions parciales de índices sin anticipar `IT-INDEXES-P0`, reservado para V2-T070. V2-T046 revalida las protecciones completas mediante `IT-SCHEMAS-P0`, `IT-IMMUTABILITY`, `IT-SINGLETON` e `IT-REFERENCE-PERMISSIONS` después de materializar 11 tablas y la migración manual.
+S02 produce el harness probe. S03 posee tres IDs catalog-only y dos casos P0 auxiliares para concurrencia y rollback/cleanup de seed. S04 produce `UT-IDENTITY` y los tres IDs `IT-PERSON-*`/`IT-TEXT-CHECKS` contra `Person` y roles reales. S05/V2-T032 produce `IT-ENR-ANNUAL`, `IT-NORMAL-FORMS` y assertions parciales de índices sin anticipar `IT-INDEXES-P0`, reservado para V2-T070; V2-T036 agrega cobertura de command/resultados/errores, cancelación, rollback, carrera sincronizada y agotamiento de tres intentos sin crear IDs de evidencia nuevos. V2-T046 revalida las protecciones completas mediante `IT-SCHEMAS-P0`, `IT-IMMUTABILITY`, `IT-SINGLETON` e `IT-REFERENCE-PERMISSIONS` después de materializar 11 tablas y la migración manual.
 
 ### Manifest P0 canónico: ID → productor único
 

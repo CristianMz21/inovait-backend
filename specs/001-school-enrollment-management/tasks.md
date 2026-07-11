@@ -4,7 +4,7 @@ description: "Tareas P0-first para el modelo de producción y capacidades escola
 
 # Tareas: gestión escolar con modelo de producción
 
-**Estado**: S01–S04 y el modelo S05 hasta `b46fc52` están verificados; V2-T001–V2-T035 están cerradas y V2-T036 es la siguiente tarea. Este documento publica el task set estable `production-model-v2.0.0`, con 35 tareas completas y 68 pendientes. Existen `ClassGroup`, `Enrollment`, sus restricciones e índices; todavía faltan command/puertos/transacción de inscripción, `TeacherContract`, migraciones y `database/setup.sql`.
+**Estado**: S01–S05 están verificados hasta `f48748f`; V2-T001–V2-T037 están cerradas y V2-T038 es la siguiente tarea. Este documento publica el task set estable `production-model-v2.0.0`, con 37 tareas completas y 66 pendientes. Existen `ClassGroup`, `Enrollment`, sus restricciones, índices y workflow transaccional de inscripción; todavía faltan `TeacherContract`, migraciones y `database/setup.sql`.
 
 Los IDs `T001`–`T076` del baseline `1223630ab99bf1bfaa4f5919fccf5ff539379c8e` pertenecen exclusivamente al task set v1 y **no se pueden usar para ejecución actual**. Sus reemplazos, retiros y descomposiciones están en [task-id-supersession.md](../../docs/task-id-supersession.md). La semántica histórica no se considera estable por coincidencia numérica.
 
@@ -133,8 +133,8 @@ Fallbacks definidos antes de apply, cada sub-slice sujeto al mismo gate:
 - [x] V2-T033 [US1] [REQ-007–011] Crear `ClassGroup` y `Enrollment` en `src/Inovait.Core/Domain/Academics/`; **Dep.** V2-T032; **Estado** PASS: `ClassGroup` es auditable/concurrente y `Enrollment` conserva solo `CreatedAtUtc`, sin School/Grade ni estado derivado.
 - [x] V2-T034 [US1] [REQ-008,REQ-009,REQ-052,REQ-057] Configurar `UQ_ClassGroup_Id_AcademicYear_ForEnrollment`, FK compuesto y UNIQUE anual en `ClassGroupConfiguration.cs` y `EnrollmentConfiguration.cs`; **Dep.** V2-T033; **Estado** PASS con FK School/AcademicYear/Grade `NoAction`, FK compuesto grupo+año, unicidad Student+año y auditoría/check/rowversion solo en `ClassGroup`; `Enrollment` solo usa default de creación.
 - [x] V2-T035 [US1] [REQ-061] Configurar `IX_ClassGroup_AcademicYearId_GradeId_SchoolId` INCLUDE `(Code)` e `IX_Enrollment_ClassGroupId_StudentPersonId` INCLUDE `(AcademicYearId, CreatedAtUtc)`; **Dep.** V2-T034; **Estado** PASS con nombres, orden key/include, soporte Grade y contexto únicos exactos; `Id` queda implícito por PK clustered y no se declara en INCLUDE.
-- [ ] V2-T036 [US1] [REQ-003,REQ-007–011] Definir command/puertos/transacción de inscripción en `src/Inovait.Core/Features/Enrollments/`; **Dep.** V2-T034.
-- [ ] V2-T037 Validar S05: año divergente falla, no existen School/Grade en Enrollment, el índice coincide en key/include y ejecutar el gate humano obligatorio; **Dep.** V2-T035,V2-T036; **Criterio** ≤400 o bloqueo sin excepción.
+- [x] V2-T036 [US1] [REQ-003,REQ-007–011] Definir command/puertos/transacción de inscripción en `src/Inovait.Core/Features/Enrollments/`; **Dep.** V2-T034; **Estado** PASS en `f48748f`: command/resultados/errores canónicos, identidad compuesta, alta/reuso del rol Student, referencias/contexto, unicidad anual, transacción `Serializable`, rollback seguro ante cancelación, limpieza del tracker, retry SQL y agotamiento determinista en `ConcurrencyConflict`.
+- [x] V2-T037 Validar S05: año divergente falla, no existen School/Grade en Enrollment, el índice coincide en key/include y ejecutar el gate humano obligatorio; **Dep.** V2-T035,V2-T036; **Estado** PASS con Testcontainers SQL Server real y fallback deshabilitado: criterios relacionales exactos, 19/19 targeted, 55/55 P0, 63/63 Debug y Release, y gate inmutable `100b0e6...f48748f` de 400 líneas sin excepción.
 
 ## Fase 6 / S06: TeacherContract
 
@@ -236,7 +236,7 @@ Fallbacks definidos antes de apply, cada sub-slice sujeto al mismo gate:
 
 `V2-T001–V2-T004 → S01 V2-T005–V2-T010 → S02 V2-T011–V2-T019 → S03 V2-T020–V2-T026 → S04 V2-T027–V2-T031 → S05/S06 V2-T032–V2-T043 → S07 V2-T044–V2-T046 → S08–S11 V2-T047–V2-T067 → S12 V2-T068–V2-T075 → puerta P0 → S13 V2-T076–V2-T087 → S14–S17 V2-T088–V2-T099 → S18 V2-T100–V2-T103`.
 
-- Task set: `production-model-v2.0.0`; 103/103 tareas trazadas; 35 completas y 68 pendientes. El modelo S05 V2-T032–V2-T035 está cerrado y la primera pendiente es V2-T036; V2-T037 mantiene abierto el gate final S05. P0: V2-T001–V2-T075; P1 condicional: V2-T076–V2-T099; cierre: V2-T100–V2-T103.
+- Task set: `production-model-v2.0.0`; 103/103 tareas trazadas; 37 completas y 66 pendientes. S05 V2-T032–V2-T037 está cerrado y la primera pendiente es V2-T038. P0: V2-T001–V2-T075; P1 condicional: V2-T076–V2-T099; cierre: V2-T100–V2-T103.
 - Cobertura auditada: 63/63 requisitos y 35/35 escenarios; cero tareas huérfanas o fuera de alcance y cero requisitos/escenarios sin ruta de ejecución. No se agregan ni renumeran IDs.
 - REQ-053–REQ-063: mapeados en V2-T020–V2-T046, V2-T068–V2-T070, V2-T075–V2-T087 y V2-T102.
 - OpenAPI no se modifica: el refactor mantiene códigos documentales en la proyección y los 15 operationIds.

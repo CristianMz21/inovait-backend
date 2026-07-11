@@ -10,14 +10,14 @@ Prior clarification and PRD review are complete, so no proposal question round i
 
 - Restore dispatcher-compatible execution metadata for the already-planned change.
 - Reference canonical requirements, design, and task progress without duplicating product behavior.
-- Resume implementation from the verified S05 model subset at `b46fc52`; V2-T036 is next.
+- Resume implementation from verified S05 closure at `f48748f`; V2-T038 is next.
 
 ## Scope
 
 ### In Scope
 - Mirror the validated P0 scope: `US1` enrollment, `US2` enrollment query, and `US3` multi-school teacher contracting.
 - Preserve the approved production model, task IDs, P0-before-P1 gate, `stacked-to-main` delivery, and 400-line human-review gate.
-- Continue from local `main` through `b46fc52`: S01–S04 and V2-T001–V2-T035 are complete with immutable evidence; S05 remains open through V2-T037.
+- Continue from local `main` through `f48748f`: S01–S05 and V2-T001–V2-T037 are complete with immutable evidence; S06 starts at V2-T038.
 
 ### Out of Scope
 - New requirements, behavior, scope, IDs, or architecture decisions.
@@ -41,7 +41,7 @@ Use `specs/001-school-enrollment-management/spec.md` for behavior, `specs/001-sc
 ## Current Routing
 
 - Status: apply-ready.
-- Progress: 35 of 103 canonical tasks complete; 68 pending.
+- Progress: 37 of 103 canonical tasks complete; 66 pending.
 - Next recommended phase: `apply`.
 - Blocked reasons: none.
 
@@ -51,7 +51,7 @@ Use `specs/001-school-enrollment-management/spec.md` for behavior, `specs/001-sc
 |---|---|---|
 | `specs/001-school-enrollment-management/` | Reference only | Canonical requirements, design, model, and tasks |
 | `openspec/changes/school-enrollment-management/` | Compatibility metadata | Dispatcher-compatible proposal and state |
-| Existing implementation through `b46fc52` | Verified | Immutable S05 model baseline for V2-T036; V2-T037 remains the final S05 gate |
+| Existing implementation through `f48748f` | Verified | Immutable S05 closure; V2-T038 is the next canonical task |
 
 ## Risks
 
@@ -72,6 +72,6 @@ Remove only this compatibility mirror. Future implementation rollback remains th
 
 ## Success Criteria
 
-- [x] With proposal, specification, design, and tasks present, OpenSpec dispatches next to `apply` at 35/103 progress without changing canonical behavior.
+- [x] With proposal, specification, design, and tasks present, OpenSpec dispatches next to `apply` at 37/103 progress without changing canonical behavior.
 - [x] All 63 canonical requirement IDs and 35 canonical scenarios remain referenced unchanged rather than duplicated into OpenSpec.
-- [x] S01–S04 and V2-T032–V2-T035 completion through immutable commit `b46fc52` are preserved as the implementation baseline.
+- [x] S01–S05 and V2-T032–V2-T037 completion through immutable commit `f48748f` are preserved as the implementation baseline.

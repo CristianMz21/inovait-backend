@@ -69,7 +69,8 @@ La salida esperada incluye `401` y `human gate failed: 401 > 400`; el último `t
 | S02 | `1d627eba7acc46aed404e5d4bd818766a855adbb` | `1d627eba7acc46aed404e5d4bd818766a855adbb` | `0ecac062e5ef08114b0777fde53082f98840444a` | PASS: sin salida generada, 253 líneas humanas, dentro del límite de 400. |
 | S03 | `57d322974c9e177ecfa834ff39a11e6e5c4e7b97` | `57d322974c9e177ecfa834ff39a11e6e5c4e7b97` | `fb4309f52202c93b8b192d7393194089a56f2690` | PASS: sin salida generada, 338 líneas humanas, dentro del límite de 400. |
 | S04 | `8136dc0cfde187b39a4c211fdff63de24ec3fb89` | `8136dc0cfde187b39a4c211fdff63de24ec3fb89` | `e43c032c648beda45febcbd4b8fcf4282d0bfdf1` | PASS: sin salida generada, 394 líneas humanas, dentro del límite de 400. |
-| S05 modelo (V2-T032–V2-T035) | `43e3635eb91de9902898949ffeda9ed428fe438a` | `43e3635eb91de9902898949ffeda9ed428fe438a` | `b46fc52ccef011fbe9b1d38a014efd98abcea157` | PASS: sin salida generada, 285 líneas humanas; V2-T036 y el gate final V2-T037 permanecen pendientes. |
+| S05 modelo (V2-T032–V2-T035) | `43e3635eb91de9902898949ffeda9ed428fe438a` | `43e3635eb91de9902898949ffeda9ed428fe438a` | `b46fc52ccef011fbe9b1d38a014efd98abcea157` | PASS: sin salida generada, 285 líneas humanas; cierre final registrado en la unidad siguiente. |
+| S05 workflow (V2-T036–V2-T037) | `100b0e6511c34681823ce7ad7b798da78a38b772` | `100b0e6511c34681823ce7ad7b798da78a38b772` | `f48748febea49a212ddfed983f1d361d416801e2` | PASS: sin salida generada, 400 líneas humanas exactas, dentro del límite sin excepción; S05 cerrado. |
 
 ### Secuencia exacta ejecutada
 
@@ -80,6 +81,7 @@ La salida esperada incluye `401` y `human gate failed: 401 > 400`; el último `t
 5. `feat: complete catalog protections and seeding` (`fb4309f52202c93b8b192d7393194089a56f2690`): work unit S03B de 11 rutas exclusivamente bajo `src/` y `tests/`; sin salida generada.
 6. `feat: add person identity and role model` (`e43c032c648beda45febcbd4b8fcf4282d0bfdf1`): work unit S04 de 11 rutas exclusivamente bajo `src/` y `tests/`; sin salida generada.
 7. `feat: add annual enrollment model` (`b46fc52ccef011fbe9b1d38a014efd98abcea157`): work unit de modelo S05 de 6 rutas exclusivamente bajo `src/` y `tests/`; sin salida generada.
+8. `feat: add atomic enrollment workflow` (`f48748febea49a212ddfed983f1d361d416801e2`): work unit S05 de command/puertos/transacción y pruebas de confiabilidad en 6 rutas bajo `src/` y `tests/`; sin salida generada.
 
 ### Evidencia V2-T010
 
@@ -190,9 +192,21 @@ dotnet list package --vulnerable --include-transitive
 - Unicidad Student+año, historia multianual, rechazo de año divergente por FK compuesto, ausencia de School/Grade/estado derivado en Enrollment, normalización/check de ClassGroup, asignación exacta de auditoría y nombres/keys/includes/clustering: PASS.
 - Suites Debug y Release: 31 unitarias + 16 integración = 47/47 en cada configuración; filtro `Priority=P0`: 25 unitarias + 14 integración = 39/39 PASS; cero fallos/omitidas.
 - Restore, builds Debug/Release con cero warnings/errores, format, vulnerabilidades, diff y OpenAPI/checksum: PASS.
-- OpenSpec strict/show/status, `gentle-ai sdd-status` y drift de 103 task lines: PASS, 35/103 completas y V2-T036 primera pendiente.
+- Checkpoint documental previo al workflow: OpenSpec strict/show/status, `gentle-ai sdd-status` y drift de 103 task lines en PASS con 35 tareas completas; el estado vigente se registra en la evidencia siguiente.
 - Gate inmutable `git diff --numstat 43e3635eb91de9902898949ffeda9ed428fe438a...b46fc52ccef011fbe9b1d38a014efd98abcea157 -- | ./scripts/check-human-lines.py`: PASS, salida exacta `285`.
-- V2-T032–V2-T035: PASS. V2-T036 y V2-T037 permanecen pendientes; S05 todavía no está cerrado.
+- V2-T032–V2-T035: PASS. El cierre de V2-T036–V2-T037 se registra en la evidencia siguiente.
+
+## Evidencia técnica S05 workflow y cierre — 2026-07-11
+
+- `SLICE_BASE=HUMAN_BASE=100b0e6511c34681823ce7ad7b798da78a38b772`; `HUMAN_HEAD=f48748febea49a212ddfed983f1d361d416801e2`; sin manifest/salida generada.
+- Testcontainers usó `mcr.microsoft.com/mssql/server:2022-CU14-ubuntu-22.04` (`sha256:c1aa8afe9b06eab64c9774a4802dcd032205d1be785b1fd51e1c0151e7586b74`), con `ConnectionStrings__InovaitTest` explícitamente ausente.
+- Targeted V2-T036: 13 unitarias + 6 integración SQL = 19/19 PASS; cubre cada resultado/error canónico, identidad compuesta, alta/reuso de Student, anualidad, rollback/cancelación, context cleanup, carrera sincronizada con conexiones independientes, retry real y agotamiento de tres intentos.
+- V2-T037: año divergente rechazado por FK compuesto, `Enrollment` sin School/Grade, índice `IX_Enrollment_ClassGroupId_StudentPersonId` con key/include exactos e Id implícito por PK clustered: PASS.
+- Suites Debug y Release: 44 unitarias + 19 integración = 63/63 en cada configuración; filtro `Priority=P0`: 38 unitarias + 17 integración = 55/55 PASS; cero fallos/omitidas.
+- Restore, builds Debug/Release con cero warnings/errores, format, vulnerabilidades, diff, árbol OpenAPI y checksum `802c13b91bf5c6425d24c540b6841a2abe134e084ea310fc2b7041e32c24a81a`: PASS.
+- OpenSpec strict/show/status, `gentle-ai sdd-status` y drift de 103 task lines: PASS, 37/103 completas y V2-T038 primera pendiente.
+- Gate inmutable `git diff --numstat 100b0e6511c34681823ce7ad7b798da78a38b772...f48748febea49a212ddfed983f1d361d416801e2 -- | ./scripts/check-human-lines.py`: PASS, salida exacta `400`, sin excepción.
+- V2-T036 y V2-T037: PASS. S05 cerrado; V2-T038 inicia S06.
 
 ## Notas operativas
 

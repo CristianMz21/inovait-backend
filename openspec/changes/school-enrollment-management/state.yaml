@@ -12,9 +12,9 @@ canonical_authority:
   data_model: specs/001-school-enrollment-management/data-model.md
   tasks: specs/001-school-enrollment-management/tasks.md
 progress:
-  completed: 35
+  completed: 37
   total: 103
-  pending: 68
+  pending: 66
 artifacts:
   proposal: true
   specs: true
@@ -57,9 +57,9 @@ tasks_progress:
     - V2-T033
     - V2-T034
     - V2-T035
-  pending:
     - V2-T036
     - V2-T037
+  pending:
     - V2-T038
     - V2-T039
     - V2-T040

@@ -34,7 +34,7 @@ Parity tests compare `sys.schemas`, `sys.tables`, `sys.columns`, `sys.default_co
 
 ## Current Execution Snapshot
 
-Verified HEAD `b46fc52`: S01–S04 and V2-T001–V2-T035 are complete. The S05 model proves ClassGroup/Enrollment exact mappings, annual uniqueness, composite group-year integrity, controlled 3NF dependency, exact audit allocation and partial index metadata against real SQL Server. V2-T036 is next and V2-T037 remains the final S05 gate.
+Verified HEAD `f48748f`: S01–S05 and V2-T001–V2-T037 are complete. S05 proves exact ClassGroup/Enrollment mappings, annual/composite integrity, controlled 3NF, audit/index allocation and the atomic enrollment workflow with canonical results, cancellation-safe rollback and deterministic SQL race handling. V2-T038 starts S06.
 
 ## Open Questions
 
