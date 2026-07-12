@@ -2,7 +2,7 @@
 
 API para la evaluación técnica de gestión de inscripciones escolares y contratos docentes.
 
-> **Estado actual**: S01 materializa la solución .NET, tres proyectos de producción, dos proyectos de pruebas y smoke tests HTTP. S02 y todo el dominio siguen pendientes; todavía no existen entidades, migraciones ni `database/setup.sql`. El baseline `1223630ab99bf1bfaa4f5919fccf5ff539379c8e` conserva sin cambios los diez YAML del bundle OpenAPI.
+> **Estado actual**: `production-model-v2.0.0` está completo — 103/103 tareas, 0 pendientes (S01–S18 cerrados). El modelo de producción materializa 14 tablas/5 triggers mediante una cadena de cuatro migraciones EF (`InitialP0ProductionModel`, `AddP0DatabaseProtections`, `AddP1TeachingModel`, `AddP1DatabaseProtections`), con `database/setup.sql` en paridad verificada. Los 15 `operationId` del baseline `1223630ab99bf1bfaa4f5919fccf5ff539379c8e` están mapeados en runtime (`IT-OPENAPI`), incluidos inscripción atómica, consulta de inscritos, contratos docentes multiescuela, catálogo de materias y los cuatro reportes/historia P1 (`getAgeDistribution`, `getDistinctTeacherCountsBySector`, `getTopSchoolsByEnrollment`, `getStudentHistory`). `./scripts/run-p0-tests.sh` termina `P0 GATE PASSED: 37/37` y `./scripts/run-p1-tests.sh` termina `P1 GATE PASSED: 13/13`. El empaquetado/paquete final fuera del repositorio no se ejecutó (requiere autorización explícita no otorgada).
 
 ## Compromiso de una jornada
 
@@ -13,7 +13,7 @@ P0 es el único MVP comprometido:
 3. crear contratos independientes de un Teacher para varias escuelas y consultarlos;
 4. proveer catálogos necesarios, SQL mínimo, pruebas críticas y walkthrough del evaluador.
 
-P1 mantiene planificación completa para los reportes municipales, pero es una extensión condicional después de evidencia P0.
+P1 (reportes municipales e historia de estudiante) quedó entregado end-to-end como extensión condicional posterior a la evidencia P0, con su propio runner de gate (`./scripts/run-p1-tests.sh`).
 
 ## Stack materializado en S01
 
@@ -82,7 +82,7 @@ export MSSQL_SA_PASSWORD='<clave-fuerte-propia>'
 docker compose -f compose.yaml up -d --wait
 ```
 
-La API se apunta al contenedor con la misma clave runtime de siempre, `ConnectionStrings__InovaitDatabase`, y `database/setup.sql` se aplica con `sqlcmd` sobre la base vacía. El runner `./scripts/run-p0-tests.sh` valida los 37 IDs del manifest P0 canónico y termina con `P0 GATE PASSED: 37/37`. Detalle completo en [quickstart.md](specs/001-school-enrollment-management/quickstart.md).
+La API se apunta al contenedor con la misma clave runtime de siempre, `ConnectionStrings__InovaitDatabase`, y `database/setup.sql` se aplica con `sqlcmd` sobre la base vacía (14 tablas, paridad con la migración). El runner `./scripts/run-p0-tests.sh` valida los 37 IDs del manifest P0 canónico y termina con `P0 GATE PASSED: 37/37`; el runner `./scripts/run-p1-tests.sh` valida los 13 IDs del manifest P1 canónico y termina con `P1 GATE PASSED: 13/13`. Detalle completo en [quickstart.md](specs/001-school-enrollment-management/quickstart.md).
 
 Consultar [quickstart.md](specs/001-school-enrollment-management/quickstart.md), [assessment-baseline.md](docs/assessment-baseline.md) y [requirements-traceability.md](docs/requirements-traceability.md).
 

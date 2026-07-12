@@ -110,6 +110,8 @@ La prueba de normalización relacional queda en `data-model.md`: todas las tabla
 
 - REQ-001–REQ-063: 63/63 trazados.
 - SCN-001–SCN-035 y BQ-001–BQ-005: completos.
-- operationIds: 15/15, sin modificación del bundle.
-- Tareas: 103 en `production-model-v2.0.0`; V2-T001–V2-T009 están completos. V2-T010 conserva pendiente únicamente el gate por SHAs; S02 no comenzó.
-- Existen solución, tres proyectos de producción, dos proyectos xUnit v3 y smoke tests HTTP. No existen entidades, migraciones ni `database/setup.sql`.
+- operationIds: 15/15, sin modificación del bundle; los 15 mapeados en runtime y verificados por `IT-OPENAPI` (V2-T100, `015cc6a`).
+- Tareas: 103/103 en `production-model-v2.0.0` completas, 0 pendientes. S01–S18 cerrados.
+- Existen el modelo completo (14 tablas/5 triggers), la cadena de cuatro migraciones EF (`InitialP0ProductionModel`, `AddP0DatabaseProtections`, `AddP1TeachingModel`, `AddP1DatabaseProtections`) y `database/setup.sql` en paridad verificada (`IT-SQL-SCRIPT`/`IT-SQL-SCRIPT-P1`). Inscripción atómica, consulta de inscritos, contratos docentes multiescuela, catálogo de materias y los cuatro reportes/historia P1 (`getAgeDistribution`, `getDistinctTeacherCountsBySector`, `getTopSchoolsByEnrollment`, `getStudentHistory`) están entregados end-to-end.
+- `./scripts/run-p0-tests.sh`: `P0 GATE PASSED: 37/37`. `./scripts/run-p1-tests.sh`: `P1 GATE PASSED: 13/13`.
+- El empaquetado/paquete final fuera del repositorio mencionado en V2-T103 no se ejecutó en este cierre (requiere autorización explícita no otorgada).

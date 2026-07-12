@@ -1,5 +1,7 @@
 # Instrucciones del evaluador técnico
 
+> **Estado actual**: 103/103 tareas completas, 0 pendientes; `production-model-v2.0.0` está cerrado (S01–S18). Existen el modelo completo de 14 tablas/5 triggers (cadena de cuatro migraciones EF: `InitialP0ProductionModel`, `AddP0DatabaseProtections`, `AddP1TeachingModel`, `AddP1DatabaseProtections`), `database/setup.sql` con paridad verificada contra la BD migrada, los 15 `operationId` mapeados en runtime (`IT-OPENAPI`), y los cuatro reportes/historia P1 (`getAgeDistribution`, `getDistinctTeacherCountsBySector`, `getTopSchoolsByEnrollment`, `getStudentHistory`) sobre el host P0 ya entregado. `./scripts/run-p0-tests.sh` termina `P0 GATE PASSED: 37/37` y `./scripts/run-p1-tests.sh` termina `P1 GATE PASSED: 13/13`. Las dispensas `EX-INTEGRITY-2026-07-11` quedaron registradas en S08, S12, S13A/S13B y S14–S16/S17; el resto de los slices cerró sin excepción. El empaquetado/paquete final fuera del repositorio que menciona V2-T103 no se ejecutó (requiere autorización explícita no otorgada).
+
 ## Pre-requisitos de verificación
 
 - .NET SDK: `10.0.109` (usando `global.json`), C# `14` y target `net10.0`.
@@ -84,6 +86,9 @@ La salida esperada incluye `401` y `human gate failed: 401 > 400`; el último `t
 | S13A (V2-T076–V2-T080) | `23dbe3efd730a4a89ba98f5e0b9e3bff6f03b437` | `23dbe3efd730a4a89ba98f5e0b9e3bff6f03b437` | `33c024154d579137524e3849c12d12de0b5c5b51` | PASS con dispensa `EX-INTEGRITY-2026-07-11`: sin salida generada; gate humano inmutable mide `673` líneas, supera 400; modelo P1 (`Subject`/`TeachingAssignment`/`ClassSchedule`) y validación transaccional de escuela/contención temporal en un solo work unit `33c0241`. |
 | S13B (V2-T081–V2-T083) | `33c024154d579137524e3849c12d12de0b5c5b51` | `f884d720d48d8f921df57f39b379caeab1f564b5` (solo salida generada) | `95ea7e3e9295111d25806f6e2b17aa79ae25cb57` | PASS con dispensa `EX-INTEGRITY-2026-07-11`: manifest exacto de cuatro rutas (`docs/generated-manifests/s13.txt`, incluido el Designer manual, precedente S07) excluido del conteo; gate humano inmutable mide `814` líneas, supera 400; migración manual `AddP1DatabaseProtections` y extensión de `database/setup.sql`/`SetupSqlParityTestsP1` a 14 tablas en `95ea7e3`. |
 | S13C (V2-T084–V2-T087) | `95ea7e3e9295111d25806f6e2b17aa79ae25cb57` | `95ea7e3e9295111d25806f6e2b17aa79ae25cb57` | `40429aa88d24e4b06a5407d644cba0f4d0981534` | PASS: sin salida generada, `115` líneas humanas, dentro del límite de 400 y sin excepción; `listSubjects` end-to-end en `40429aa`; S13 cerrado. |
+| S14–S16 (V2-T088–V2-T096) | `18cdc7909ce9bee6bfb97246d9f517caf85ab426` | `18cdc7909ce9bee6bfb97246d9f517caf85ab426` | `c86cc845ce5ae1bf98e447c1debc61174c583f93` | PASS con dispensa `EX-INTEGRITY-2026-07-11`: sin salida generada; gate humano inmutable mide `826` líneas, supera 400; los tres reportes (`getAgeDistribution`, `getDistinctTeacherCountsBySector`, `getTopSchoolsByEnrollment`) en un solo work unit `c86cc84`. |
+| S17 (V2-T097–V2-T099) | `c86cc845ce5ae1bf98e447c1debc61174c583f93` | `c86cc845ce5ae1bf98e447c1debc61174c583f93` | `e8d404648fdd9a257b50abb8b4a3cdbb94f14b93` | PASS con dispensa `EX-INTEGRITY-2026-07-11`: sin salida generada; gate humano inmutable mide `460` líneas, supera 400; `getStudentHistory` end-to-end en `e8d4046`; S17 cerrado. |
+| S18 (V2-T100–V2-T103) | `e8d404648fdd9a257b50abb8b4a3cdbb94f14b93` | `e8d404648fdd9a257b50abb8b4a3cdbb94f14b93` | `015cc6aa04d1e674c17e7785e4a3eb952629675e` | PASS: sin salida generada, `375` líneas humanas, dentro del límite de 400 y sin excepción; `IT-OPENAPI` y `run-p1-tests.sh` en `015cc6a`; S18 cerrado; proyecto completo. |
 
 ### Secuencia exacta ejecutada
 
@@ -357,6 +362,42 @@ dotnet list package --vulnerable --include-transitive
 - `dotnet restore`: PASS. Builds Debug y Release: PASS, cero warnings y cero errores. `dotnet format --verify-no-changes`: PASS. `dotnet list package --vulnerable --include-transitive`: PASS, cero paquetes vulnerables en cinco proyectos. Árbol de contratos sin diferencias/untracked y checksum `802c13b91bf5c6425d24c540b6841a2abe134e084ea310fc2b7041e32c24a81a`: PASS (tree byte-idéntico desde `8aa8097`). `openspec validate school-enrollment-management --strict`: PASS.
 - OpenSpec strict/show/status y drift de 103 task lines: PASS, 87/103 completas y V2-T088 primera pendiente.
 - V2-T076–V2-T087: PASS. S13A y S13B bajo dispensa `EX-INTEGRITY-2026-07-11`; S13C sin excepción. S13 cerrado; S14/V2-T088 abre.
+
+## Evidencia técnica S14–S16 reportes P1 — 2026-07-12
+
+- Gate combinado (los tres reportes P1 en un solo work unit): `SLICE_BASE=HUMAN_BASE=18cdc7909ce9bee6bfb97246d9f517caf85ab426`, `HUMAN_HEAD=c86cc845ce5ae1bf98e447c1debc61174c583f93`; `git diff --numstat 18cdc7909ce9bee6bfb97246d9f517caf85ab426...c86cc845ce5ae1bf98e447c1debc61174c583f93 -- | ./scripts/check-human-lines.py` devolvió `826` (estado `1`), registrado bajo la dispensa `EX-INTEGRITY-2026-07-11` autorizada por el usuario.
+- Composición: `src/Inovait.Api/{Contracts/Reports.cs,Endpoints/ReportEndpoints.cs,Errors/ReportProblems.cs,Program.cs,Reads/ReportReadService.cs}` y `tests/Inovait.IntegrationTests/Api/{AgeDistributionTests.cs,TeacherCountsBySectorTests.cs,TopSchoolsTests.cs}`; sin manifest/salida generada.
+- Targeted `Evidence=IT-RPT-AGE|Evidence=IT-RPT-SECTOR|Evidence=IT-RPT-TOP`: 12/12 PASS — `IT-RPT-AGE` 5/5 (buckets 3–7/8–12/≥13, exclusión total de <3, filtros acumulativos school/grade, asOfDate por defecto vía `TimeProvider`/explícito, 404 por referencias inexistentes, 400 por parámetro requerido ausente, 422 `as_of_date_invalid`), `IT-RPT-SECTOR` 4/4 (`COUNT(DISTINCT)` por sector, exclusión íntegra de contratos `Cancelled`, bordes de período inclusivos, período por defecto = fecha actual, zero-fill de ambos sectores), `IT-RPT-TOP` 3/3 (todos los empates en el máximo, orden `school.name`→`school.id`, `[]` para año sin inscripciones).
+- `./scripts/run-p0-tests.sh` re-verificado sobre el árbol final: `P0 GATE PASSED: 37/37` (151 pruebas `Priority=P0`). `scripts/run-p1-tests.sh` no existía todavía como archivo en este rango (se agrega recién en S18, `015cc6a`); su corrida real de `P1 GATE PASSED: 13/13` queda registrada en la evidencia S18 siguiente.
+- Suites completas verificadas contra el árbol final del cierre (HEAD `015cc6aa04d1e674c17e7785e4a3eb952629675e`): Debug 106 unitarias + 109 integración = 215/215; Release 106 + 109 = 215/215; cero fallidas/omitidas en ambas configuraciones.
+- `dotnet restore`: PASS. Builds Debug y Release: PASS, cero warnings y cero errores. `dotnet format --verify-no-changes`: PASS. `dotnet list package --vulnerable --include-transitive`: PASS, cero paquetes vulnerables en cinco proyectos.
+- V2-T088–V2-T096: PASS bajo dispensa `EX-INTEGRITY-2026-07-11`. S14, S15 y S16 cerrados en un único work unit; S17/V2-T097 queda habilitado.
+
+## Evidencia técnica S17 historial — 2026-07-12
+
+- Gate: `SLICE_BASE=HUMAN_BASE=c86cc845ce5ae1bf98e447c1debc61174c583f93`, `HUMAN_HEAD=e8d404648fdd9a257b50abb8b4a3cdbb94f14b93`; `git diff --numstat c86cc845ce5ae1bf98e447c1debc61174c583f93...e8d404648fdd9a257b50abb8b4a3cdbb94f14b93 -- | ./scripts/check-human-lines.py` devolvió `460` (estado `1`), registrado bajo la dispensa `EX-INTEGRITY-2026-07-11` autorizada por el usuario.
+- Composición: `src/Inovait.Api/{Contracts/StudentHistory.cs,Endpoints/StudentHistoryEndpoints.cs,Errors/StudentHistoryProblems.cs,Program.cs,Reads/StudentHistoryReadService.cs}` y `tests/Inovait.IntegrationTests/Api/StudentHistoryTests.cs`; sin manifest/salida generada.
+- Targeted `Evidence=IT-HISTORY`: 4/4 PASS — resolución `DocumentType.Code` + número normalizado → `Person` → `Student` con 404 `student_not_found` si no existe rol Student; inscripciones ordenadas `academicYear.StartDate DESC, enrollment.Id ASC`; asignaciones por ClassGroup ordenadas `subject.Name, teacher.LastNames, teacher.FirstNames, assignment.Id` con weekdays ordenados por `Weekday`; persona dual Student+Teacher sin bloquear su propia historia; historial vacío válido (`enrollments: []`).
+- `./scripts/run-p0-tests.sh` re-verificado sobre el árbol final: `P0 GATE PASSED: 37/37` (151 pruebas). `scripts/run-p1-tests.sh` todavía no existía en este rango (se agrega en S18, `015cc6a`); su corrida real de 13/13 queda en la evidencia S18 siguiente.
+- Suites completas verificadas contra el árbol final del cierre (HEAD `015cc6aa04d1e674c17e7785e4a3eb952629675e`): Debug y Release 215/215 en cada configuración (106 unitarias + 109 integración), cero fallidas/omitidas.
+- `dotnet restore`, builds Debug/Release (0 warnings, 0 errores), `dotnet format --verify-no-changes` y `dotnet list package --vulnerable --include-transitive` (0 vulnerables en 5 proyectos): PASS.
+- V2-T097–V2-T099: PASS bajo dispensa `EX-INTEGRITY-2026-07-11`. S17 cerrado; S18/V2-T100 queda habilitado.
+
+## Evidencia técnica S18 cierre — 2026-07-12
+
+- Gate: `SLICE_BASE=HUMAN_BASE=e8d404648fdd9a257b50abb8b4a3cdbb94f14b93`, `HUMAN_HEAD=015cc6aa04d1e674c17e7785e4a3eb952629675e`; `git diff --numstat e8d404648fdd9a257b50abb8b4a3cdbb94f14b93...015cc6aa04d1e674c17e7785e4a3eb952629675e -- | ./scripts/check-human-lines.py` devolvió `375` (estado `0`), dentro del límite de 400, sin excepción.
+- Composición: `tests/Inovait.IntegrationTests/Api/P1OpenApiTests.cs` y `scripts/run-p1-tests.sh`; sin manifest/salida generada.
+- `dotnet restore`: PASS. Builds Debug y Release: PASS, cero warnings y cero errores.
+- Suites completas Debug y Release: 215/215 en cada configuración (106 unitarias + 109 integración), cero fallidas/omitidas.
+- Targeted `Evidence=IT-RPT-AGE|Evidence=IT-RPT-SECTOR|Evidence=IT-RPT-TOP|Evidence=IT-HISTORY|Evidence=IT-OPENAPI|Evidence=IT-NORMAL-FORMS`: 19/19 PASS — `IT-RPT-AGE` 5/5, `IT-RPT-SECTOR` 4/4, `IT-RPT-TOP` 3/3, `IT-HISTORY` 4/4, `IT-OPENAPI` 2/2, `IT-NORMAL-FORMS` 1/1.
+- `dotnet format --verify-no-changes`: PASS. `dotnet list package --vulnerable --include-transitive`: PASS, cero paquetes vulnerables en cinco proyectos.
+- `./scripts/run-p0-tests.sh`: `P0 GATE PASSED: 37/37` (151 pruebas `Priority=P0`, 80 unitarias + 71 integración).
+- `./scripts/run-p1-tests.sh`: parsed 13 evidence IDs del manifest P1, sin duplicados, discovery `list-tests` por proyecto, `P1 GATE PASSED: 13/13` (54 pruebas: 20 unitarias + 34 integración).
+- Árbol de contratos sin diferencias/untracked (`git status --porcelain -- specs/001-school-enrollment-management/contracts` vacío) y checksum combinado `802c13b91bf5c6425d24c540b6841a2abe134e084ea310fc2b7041e32c24a81a`: PASS.
+- `openspec validate --all --strict`: PASS (1 passed, 0 failed).
+- `ConnectionStrings__InovaitTest`: ausente del entorno (`env | rg -i ConnectionStrings` sin salida).
+- OpenSpec strict/status y drift de 103 task lines: PASS, 103/103 completas y ninguna pendiente.
+- V2-T100–V2-T103: PASS, S18 cerrado sin excepción; proyecto `production-model-v2.0.0` completo, 103/103 tareas. El empaquetado/paquete final fuera del repositorio que menciona V2-T103 NO se ejecuta en este cierre — requiere autorización explícita del usuario, no otorgada.
 
 ## Notas operativas
 
