@@ -7,9 +7,10 @@ public sealed class InovaitDbContextFactory : IDesignTimeDbContextFactory<Inovai
 {
     public InovaitDbContext CreateDbContext(string[] args)
     {
+        // Design-time only (dotnet-ef migrations add); never opens a connection.
         var connectionString =
             Environment.GetEnvironmentVariable("INOVAIT_DESIGN_TIME_CONNECTION")
-            ?? "Server=(local);Database=Inovait_DesignTime;TrustServerCertificate=True;Encrypt=False;Integrated Security=True";
+            ?? "Server=(local);Database=Inovait_DesignTime;Integrated Security=True";
 
         var options = new DbContextOptionsBuilder<InovaitDbContext>()
             .UseSqlServer(connectionString)
