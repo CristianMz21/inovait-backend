@@ -286,30 +286,31 @@ function Invoke-DemoDataSeed {
     Write-Info 'Seeding fictitious local-evaluation demo data (skip with -NoDemoData)...'
 
     # The demo data lives as a versioned deliverable script so evaluators can
-    # also apply it standalone: database\demo-data.sql (pure ASCII; accented
-    # characters via NCHAR() so it survives every encoding layer).
-    $demoSqlFile = Join-Path $RepoRoot 'database\demo-data.sql'
+    # also apply it standalone: database\seed-demo.sql (pure ASCII; accented
+    # characters via NCHAR() so it survives every encoding layer). See
+    # docs\SEED_DATA.md for the full dataset and reset-demo.sql for cleanup.
+    $demoSqlFile = Join-Path $RepoRoot 'database\seed-demo.sql'
     if (-not (Test-Path $demoSqlFile)) {
         Fail "Missing $demoSqlFile (versioned demo data script)."
     }
 
-    docker compose cp $demoSqlFile "${ComposeService}:/tmp/demo-data.sql"
+    docker compose cp $demoSqlFile "${ComposeService}:/tmp/seed-demo.sql"
     if ($LASTEXITCODE -ne 0) {
         Fail "Failed to copy the demo data script into the $ComposeService container."
     }
 
     # Same uid/mode gotcha as setup.sql: make it readable for the mssql user.
-    docker compose exec -T -u root $ComposeService chmod 0444 /tmp/demo-data.sql
+    docker compose exec -T -u root $ComposeService chmod 0444 /tmp/seed-demo.sql
     if ($LASTEXITCODE -ne 0) {
-        Fail 'Failed to chmod /tmp/demo-data.sql inside the container.'
+        Fail 'Failed to chmod /tmp/seed-demo.sql inside the container.'
     }
 
-    docker compose exec -T $ComposeService $SqlCmdPath -C -S localhost -U sa -P $SaPassword -b -d Inovait -i /tmp/demo-data.sql
+    docker compose exec -T $ComposeService $SqlCmdPath -C -S localhost -U sa -P $SaPassword -b -d Inovait -i /tmp/seed-demo.sql
     if ($LASTEXITCODE -ne 0) {
         Fail 'Failed to apply the demo data script.'
     }
 
-    Write-Ok 'Demo data ready (idempotent -- per-row seeded/skipped summary above).'
+    Write-Ok 'Demo data ready (idempotent -- per-block seeded summary above; see docs\SEED_DATA.md).'
 }
 
 function Start-Api {

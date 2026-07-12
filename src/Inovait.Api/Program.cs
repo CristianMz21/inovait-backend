@@ -4,6 +4,7 @@ using Inovait.Api.Errors;
 using Inovait.Api.Reads;
 using Inovait.Infrastructure;
 using Inovait.Infrastructure.Persistence;
+using Inovait.Infrastructure.Persistence.Seed;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -64,6 +65,22 @@ if (!string.IsNullOrWhiteSpace(connectionString))
     await using var scope = app.Services.CreateAsyncScope();
     await scope.ServiceProvider.GetRequiredService<AcademicConfigurationStartupCheck>()
         .EnsurePresentAsync();
+
+    // Fictitious LOCAL-EVALUATION demo data (never applied in Production without an explicit
+    // flag): --seed-demo on the command line, INOVAIT_SEED_DEMO=true in the environment, or
+    // Inovait:SeedDemoData=true in configuration while running in Development.
+    var seedDemoData = args.Contains("--seed-demo")
+        || string.Equals(Environment.GetEnvironmentVariable("INOVAIT_SEED_DEMO"), "true", StringComparison.OrdinalIgnoreCase)
+        || (app.Environment.IsDevelopment() && builder.Configuration.GetValue<bool>("Inovait:SeedDemoData"));
+    if (seedDemoData)
+    {
+        await DemoDataSeeder.ApplyAsync(scope.ServiceProvider.GetRequiredService<InovaitDbContext>());
+        app.Logger.LogInformation("Demo data: applied (fictitious local-evaluation dataset; see docs/SEED_DATA.md).");
+    }
+    else
+    {
+        app.Logger.LogInformation("Demo data: skipped (no --seed-demo / INOVAIT_SEED_DEMO / Inovait:SeedDemoData flag).");
+    }
 }
 
 if (app.Environment.IsDevelopment())

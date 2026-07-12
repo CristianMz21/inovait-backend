@@ -231,17 +231,18 @@ seed_demo_data() {
   echo "Seeding fictitious local-evaluation demo data (skip with --no-demo-data)..."
 
   # The demo data lives as a versioned deliverable script so evaluators can
-  # also apply it standalone: database/demo-data.sql (pure ASCII; accented
-  # characters via NCHAR() so it survives every encoding layer).
-  local demo_sql="$REPO_ROOT/database/demo-data.sql"
+  # also apply it standalone: database/seed-demo.sql (pure ASCII; accented
+  # characters via NCHAR() so it survives every encoding layer). See
+  # docs/SEED_DATA.md for the full dataset and reset-demo.sql for cleanup.
+  local demo_sql="$REPO_ROOT/database/seed-demo.sql"
   [[ -f "$demo_sql" ]] || fail "Missing $demo_sql (versioned demo data script)."
 
-  docker compose cp "$demo_sql" "${COMPOSE_SERVICE}:/tmp/demo-data.sql"
+  docker compose cp "$demo_sql" "${COMPOSE_SERVICE}:/tmp/seed-demo.sql"
   # Same uid/mode gotcha as setup.sql: make it readable for the mssql user.
-  docker compose exec -T -u root "$COMPOSE_SERVICE" chmod 0444 /tmp/demo-data.sql
+  docker compose exec -T -u root "$COMPOSE_SERVICE" chmod 0444 /tmp/seed-demo.sql
   docker compose exec -T "$COMPOSE_SERVICE" "$SQLCMD" -C -S localhost -U sa -P "$SA_PASSWORD" -b \
-    -d Inovait -i /tmp/demo-data.sql
-  echo "Demo data ready (idempotent -- per-row seeded/skipped summary above)."
+    -d Inovait -i /tmp/seed-demo.sql
+  echo "Demo data ready (idempotent -- per-block seeded summary above; see docs/SEED_DATA.md)."
 }
 
 start_api() {

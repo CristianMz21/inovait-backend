@@ -1,0 +1,99 @@
+### Inovait -- consola de evaluacion manual (formato REST Client, VS Code)
+#
+# Prerrequisito: dataset sembrado con database/seed-demo.sql (ver docs/SEED_DATA.md
+# para el detalle completo del dataset y las respuestas esperadas) y la API
+# corriendo en :5000 (./scripts/deploy-local.sh o dotnet run --project src/Inovait.Api).
+#
+# SIN AUTENTICACION: el contrato OpenAPI no define "security" en ninguna operacion
+# (security: [] a nivel global) -- ningun request de este archivo necesita headers
+# de autorizacion ni credenciales.
+#
+# Los Id numericos son IDENTITY (dependen del orden real de insercion en tu base,
+# no son estables entre entornos). Por eso el flujo es "descubrir, despues completar":
+# corre primero los requests de catalogo (1)-(3) y (6), mira la respuesta, y pega los
+# Id reales en las variables de abajo antes de correr el resto.
+
+@baseUrl = http://localhost:5000
+
+# Completar despues de correr (1): Id de "Colegio Publico Central" (Code=COL-PUB-001).
+@schoolPub001Id = 1
+# Completar despues de correr (2): Id del grado "Quinto" (Code=DEMO-G05).
+@gradeQuintoId = 1
+# Completar despues de correr (3): Id marcado isCurrent=true (Code=AY-2026 salvo que
+# se haya reconfigurado catalog.AcademicConfiguration).
+@currentAcademicYearId = 1
+# Completar despues de correr (6): Id de persona (personId) de DEMO-DOC-005
+# (buscar por documentNumber="DEMO-DOC-005" en la respuesta de listTeachers).
+@teacherDoc005Id = 1
+# Completar despues de correr (12): Id del ClassGroup de Quinto-A en COL-PUB-001 del
+# anio actual (buscar el item cuyo code empieza con "DEMO-P105A-").
+@classGroupQuintoPub001Id = 1
+
+### (1) Listar colegios -- usar para completar @schoolPub001Id
+GET {{baseUrl}}/api/schools
+
+### (2) Listar grados -- usar para completar @gradeQuintoId
+GET {{baseUrl}}/api/grades
+
+### (3) Listar anios academicos -- usar para completar @currentAcademicYearId
+GET {{baseUrl}}/api/academic-years
+
+### (4) PREGUNTA "matricula estricta": Quinto en COL-PUB-001 en el anio actual
+# esperado: exactamente 3 resultados (DEMO-EST-006, DEMO-EST-011, DEMO-EST-012).
+GET {{baseUrl}}/api/enrollments?schoolId={{schoolPub001Id}}&gradeId={{gradeQuintoId}}&academicYearId={{currentAcademicYearId}}
+
+### (5) PREGUNTA "historico de un estudiante": DEMO-EST-006
+# esperado: 3 anios en COL-PUB-001, un docente distinto por anio (DEMO-DOC-001 en
+# y-2 / DEMO-DOC-006 en y-1 / DEMO-DOC-005 en y), grados Tercero -> Cuarto -> Quinto,
+# grupos A -> B -> A.
+GET {{baseUrl}}/api/students/DNI/DEMO-EST-006/history
+
+### (6) Listar docentes -- usar para completar @teacherDoc005Id (buscar DEMO-DOC-005)
+GET {{baseUrl}}/api/teachers
+
+### (7) Contratos de DEMO-DOC-005
+# esperado: 2 contratos Confirmed, ambos con effectiveStatus=Effective hoy, uno en
+# COL-PUB-001 y otro en COL-PRI-001 (simultaneos, escuelas distintas).
+GET {{baseUrl}}/api/teachers/{{teacherDoc005Id}}/contracts
+
+### (8) PREGUNTA "distribucion de edades" sobre la matricula del anio actual
+# esperado: 8 en [3-7], 8 en [8-12], 8 en 13+ (edades exactas 3, 7, 8, 12 y 13 presentes).
+GET {{baseUrl}}/api/reports/age-distribution?academicYearId={{currentAcademicYearId}}
+
+### (9) PREGUNTA "docentes por sector" (activos hoy, sin pasar periodStart/periodEnd
+# el reporte usa hoy-hoy como default)
+# esperado: publicCount=4, privateCount=3 (6 docentes distintos: DEMO-DOC-005 y
+# DEMO-DOC-006 cuentan una vez por sector en el que estan activos).
+GET {{baseUrl}}/api/reports/teacher-counts-by-sector
+
+### (10) PREGUNTA "colegio con mayor matricula" en el anio actual
+# esperado: un unico resultado, COL-PUB-001 ("Colegio Publico Central"), enrollmentCount=10.
+GET {{baseUrl}}/api/reports/top-schools?academicYearId={{currentAcademicYearId}}
+
+### (11) Listar class-groups de Quinto en COL-PUB-001 en el anio actual -- usar para
+# completar @classGroupQuintoPub001Id (el unico item devuelto, code~"DEMO-P105A-*").
+GET {{baseUrl}}/api/class-groups?schoolId={{schoolPub001Id}}&gradeId={{gradeQuintoId}}&academicYearId={{currentAcademicYearId}}
+
+### (12) Alta de un estudiante NUEVO (documento fuera del namespace DEMO/COL, no
+# colisiona con el dataset y sobrevive a database/reset-demo.sql) matriculado en el
+# mismo grupo de Quinto de COL-PUB-001 usado en (4).
+POST {{baseUrl}}/api/enrollments
+Content-Type: application/json
+
+{
+  "student": {
+    "documentType": "DNI",
+    "documentNumber": "EVAL-NEW-001",
+    "firstNames": "Evaluador",
+    "lastNames": "DePrueba",
+    "birthDate": "2016-03-15"
+  },
+  "schoolId": {{schoolPub001Id}},
+  "academicYearId": {{currentAcademicYearId}},
+  "gradeId": {{gradeQuintoId}},
+  "classGroupId": {{classGroupQuintoPub001Id}}
+}
+
+### (13) Re-consultar Quinto @ COL-PUB-001 @ anio actual: ahora debe mostrar 4
+# resultados (los 3 de (4) mas el estudiante creado en (12)).
+GET {{baseUrl}}/api/enrollments?schoolId={{schoolPub001Id}}&gradeId={{gradeQuintoId}}&academicYearId={{currentAcademicYearId}}
