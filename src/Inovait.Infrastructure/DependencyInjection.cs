@@ -1,8 +1,10 @@
 using Inovait.Core.Domain.Common;
 using Inovait.Core.Features.Enrollments;
 using Inovait.Core.Features.TeacherContracts;
+using Inovait.Core.Features.TeachingAssignments;
 using Inovait.Infrastructure.Features.Enrollments;
 using Inovait.Infrastructure.Features.TeacherContracts;
+using Inovait.Infrastructure.Features.TeachingAssignments;
 using Inovait.Infrastructure.Persistence;
 using Inovait.Infrastructure.Persistence.Interceptors;
 using Inovait.Infrastructure.Text;
@@ -36,6 +38,10 @@ public static class DependencyInjection
         services.AddScoped<ITeacherContractRepository>(provider => provider.GetRequiredService<EfTeacherContractWorkflow>());
         services.AddScoped<ITeacherContractTransaction>(provider => provider.GetRequiredService<EfTeacherContractWorkflow>());
         services.AddScoped<CreateTeacherContractsHandler>();
+        services.AddScoped<EfTeachingAssignmentWorkflow>();
+        services.AddScoped<ITeachingAssignmentRepository>(provider => provider.GetRequiredService<EfTeachingAssignmentWorkflow>());
+        services.AddScoped<ITeachingAssignmentTransaction>(provider => provider.GetRequiredService<EfTeachingAssignmentWorkflow>());
+        services.AddScoped<CreateTeachingAssignmentHandler>();
         services.AddDbContext<InovaitDbContext>((provider, options) =>
             options.UseSqlServer(connectionString)
                 .AddInterceptors(

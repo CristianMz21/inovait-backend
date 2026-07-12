@@ -21,6 +21,9 @@ public sealed class InovaitDbContext(DbContextOptions<InovaitDbContext> options)
     public DbSet<ClassGroup> ClassGroups => Set<ClassGroup>();
     public DbSet<Enrollment> Enrollments => Set<Enrollment>();
     public DbSet<TeacherContract> TeacherContracts => Set<TeacherContract>();
+    public DbSet<Subject> Subjects => Set<Subject>();
+    public DbSet<TeachingAssignment> TeachingAssignments => Set<TeachingAssignment>();
+    public DbSet<ClassSchedule> ClassSchedules => Set<ClassSchedule>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
