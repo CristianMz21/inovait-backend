@@ -22,6 +22,7 @@ if (!string.IsNullOrWhiteSpace(connectionString))
     builder.Services.AddScoped<EnrollmentReadService>();
     builder.Services.AddScoped<TeacherContractReadService>();
     builder.Services.AddScoped<ReferenceLookupService>();
+    builder.Services.AddScoped<ReportReadService>();
 }
 
 builder.Services.AddProblemDetails(options =>
@@ -80,6 +81,7 @@ if (!string.IsNullOrWhiteSpace(connectionString))
     app.MapCatalogEndpoints();
     app.MapEnrollmentEndpoints();
     app.MapTeacherContractEndpoints();
+    app.MapReportEndpoints();
 }
 
 app.UseHttpsRedirection();
