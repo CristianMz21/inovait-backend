@@ -64,6 +64,12 @@ public sealed class CatalogReadService(InovaitDbContext context)
          select new TeacherSummary(person.Id, documentType.Code, person.DocumentNumber, person.FirstNames, person.LastNames))
         .ToListAsync(cancellationToken);
 
+    public Task<List<SubjectSummary>> ListSubjectsAsync(CancellationToken cancellationToken) =>
+        context.Subjects.AsNoTracking()
+            .OrderBy(subject => subject.Name).ThenBy(subject => subject.Code).ThenBy(subject => subject.Id)
+            .Select(subject => new SubjectSummary(subject.Id, subject.Code, subject.Name))
+            .ToListAsync(cancellationToken);
+
     public Task<int> CurrentAcademicYearIdAsync(CancellationToken cancellationToken) =>
         context.AcademicConfigurations.AsNoTracking()
             .Where(configuration => configuration.Id == 1)

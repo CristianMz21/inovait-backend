@@ -57,6 +57,10 @@ public static class CatalogEndpoints
             Results.Ok(await reads.ListTeachersAsync(cancellationToken)))
             .WithName("listTeachers");
 
+        group.MapGet("/subjects", async (CatalogReadService reads, CancellationToken cancellationToken) =>
+            Results.Ok(await reads.ListSubjectsAsync(cancellationToken)))
+            .WithName("listSubjects");
+
         group.MapGet("/schools/{schoolId}/teachers", async (
             int schoolId, DateOnly? asOfDate, TeacherContractReadService reads, ReferenceLookupService lookups,
             TimeProvider timeProvider, CancellationToken cancellationToken) =>

@@ -10,6 +10,8 @@ public sealed record ClassGroupSummary(int Id, string Code, int SchoolId, int Ac
 
 public sealed record TeacherSummary(int Id, string DocumentType, string DocumentNumber, string FirstNames, string LastNames);
 
+public sealed record SubjectSummary(int Id, string Code, string Name);
+
 public sealed record SchoolTeacherSummary(
     TeacherSummary Teacher, int ContractId, string PersistedStatus, string EffectiveStatus,
     DateOnly EvaluatedAt, DateOnly StartDate, DateOnly? EndDate);
