@@ -2,6 +2,8 @@ using Inovait.Infrastructure.Persistence;
 using Inovait.IntegrationTests.Infrastructure;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 
 namespace Inovait.IntegrationTests.Persistence;
 
@@ -72,7 +74,11 @@ public sealed class RelationalIndexTests(SqlServerFixture fixture) : IAsyncLifet
         }.ConnectionString;
         _context = new InovaitDbContext(new DbContextOptionsBuilder<InovaitDbContext>()
             .UseSqlServer(connectionString).Options);
-        await _context.Database.MigrateAsync(TestContext.Current.CancellationToken);
+        // Pinned to the P0 migration boundary (not "latest") so this frozen evidence (IT-INDEXES-P0:
+        // 32 indexes / 11 FKs) stays an exact historical snapshot even though the P1 migrations
+        // (AddP1TeachingModel, AddP1DatabaseProtections) now also exist in this assembly.
+        await _context.GetService<IMigrator>().MigrateAsync(
+            "20260711161518_AddP0DatabaseProtections", TestContext.Current.CancellationToken);
     }
 
     public async ValueTask DisposeAsync()
@@ -186,6 +192,166 @@ public sealed class RelationalIndexTests(SqlServerFixture fixture) : IAsyncLifet
              WHERE fkc.[constraint_object_id]=fk.[object_id])) COLLATE DATABASE_DEFAULT AS [Value]
         FROM sys.foreign_keys fk
         JOIN sys.tables t ON t.[object_id]=fk.[parent_object_id]
+        ORDER BY [Value]
+        """;
+}
+
+/// <summary>
+/// The P1 counterpart of <see cref="RelationalIndexTests"/>: asserts, against a database migrated
+/// through the full 4-migration chain, that the three P1 tables' indexes (both temporal
+/// <c>TeachingAssignment</c> indexes, its FK-support index, its uniqueness index, and the two
+/// <c>Subject</c> uniqueness indexes) have exactly the key order/INCLUDE/uniqueness declared in
+/// <c>data-model.md</c>/the generated <c>AddP1TeachingModel</c> migration; that none of them
+/// redundantly INCLUDEs <c>Id</c>; and that every P1 foreign key is covered by a leading-column
+/// index.
+/// </summary>
+[Collection(SqlServerCollection.Name)]
+[Trait("Priority", "P1")]
+public sealed class RelationalIndexTestsP1(SqlServerFixture fixture) : IAsyncLifetime
+{
+    private InovaitDbContext _context = null!;
+
+    [Fact]
+    [Trait("Evidence", "IT-INDEXES-P1")]
+    public async Task DeclaredIndexes_MatchExactNamesKeyOrderIncludesAndUniquenessAcrossTheThreeP1Tables()
+    {
+        var actual = await ReadAsync(P1IndexesSql, TestContext.Current.CancellationToken);
+        var expected = ExpectedIndexes.Select(index => index.ToRowText()).Order(StringComparer.Ordinal).ToArray();
+        Assert.Equal(9, expected.Length);
+        Assert.Equal(expected, actual);
+    }
+
+    [Fact]
+    [Trait("Evidence", "IT-INDEXES-P1")]
+    public async Task NonclusteredIndexes_NeverCarryIdInIncludeBecauseTheClusteredPrimaryKeyAlreadyProvidesIt()
+    {
+        var offenders = await ReadAsync(NonclusteredIncludesIdSql, TestContext.Current.CancellationToken);
+        Assert.Empty(offenders);
+    }
+
+    [Fact]
+    [Trait("Evidence", "IT-INDEXES-P1")]
+    public async Task EveryP1ForeignKey_IsCoveredByAnIndexWhoseLeadingKeyColumnsMatchTheForeignKeyColumns()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        var foreignKeys = await ReadAsync(P1ForeignKeyColumnsSql, cancellationToken);
+        Assert.Equal(4, foreignKeys.Length);
+
+        var indexKeysByTable = (await ReadAsync(P1IndexKeyColumnsSql, cancellationToken))
+            .Select(row => row.Split('|'))
+            .GroupBy(parts => parts[0], parts => parts[1].Split(',', StringSplitOptions.RemoveEmptyEntries))
+            .ToDictionary(group => group.Key, group => group.ToArray());
+
+        foreach (var row in foreignKeys)
+        {
+            var parts = row.Split('|');
+            var table = parts[0];
+            var foreignKeyName = parts[1];
+            var foreignKeyColumns = parts[2].Split(',', StringSplitOptions.RemoveEmptyEntries);
+            var candidates = indexKeysByTable.TryGetValue(table, out var keys) ? keys : [];
+            var isCovered = candidates.Any(key => key.Length >= foreignKeyColumns.Length
+                && key.Take(foreignKeyColumns.Length).SequenceEqual(foreignKeyColumns, StringComparer.Ordinal));
+            Assert.True(isCovered,
+                $"Foreign key {foreignKeyName} on {table} ({string.Join(",", foreignKeyColumns)}) has no leading-column supporting index.");
+        }
+    }
+
+    public async ValueTask InitializeAsync()
+    {
+        var connectionString = new SqlConnectionStringBuilder(fixture.ConnectionString)
+        {
+            InitialCatalog = $"InovaitIndexesP1_{Guid.NewGuid():N}",
+        }.ConnectionString;
+        _context = new InovaitDbContext(new DbContextOptionsBuilder<InovaitDbContext>()
+            .UseSqlServer(connectionString).Options);
+        await _context.GetService<IMigrator>().MigrateAsync(
+            "20260712010000_AddP1DatabaseProtections", TestContext.Current.CancellationToken);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await _context.Database.EnsureDeletedAsync();
+        await _context.DisposeAsync();
+    }
+
+    private async Task<string[]> ReadAsync(string sql, CancellationToken cancellationToken) =>
+        await _context.Database.SqlQueryRaw<string>(sql).ToArrayAsync(cancellationToken);
+
+    private sealed record IndexDefinition(string Schema, string Table, string Name, bool Unique, string[] Keys, string[] Includes)
+    {
+        public string ToRowText() =>
+            $"{Schema}.{Table}.{Name}:{(Unique ? 1 : 0)}:{string.Join(',', Keys)}:{string.Join(',', Includes)}:";
+    }
+
+    // Data-driven expectation, sourced from the migration/model-snapshot declared shape of the
+    // three P1 tables (data-model.md, AddP1TeachingModel, InovaitDbContextModelSnapshot). Every
+    // P1 index has no filter, so the trailing ":" in ToRowText() always terminates the row.
+    private static readonly IndexDefinition[] ExpectedIndexes =
+    [
+        new("catalog", "Subject", "PK_Subject", true, ["Id"], []),
+        new("catalog", "Subject", "UQ_Subject_Code", true, ["Code"], []),
+        new("catalog", "Subject", "UQ_Subject_Name", true, ["Name"], []),
+
+        new("academic", "TeachingAssignment", "PK_TeachingAssignment", true, ["Id"], []),
+        new("academic", "TeachingAssignment", "IX_TeachingAssignment_ClassGroupId_StartDate_EndDate", false,
+            ["ClassGroupId", "StartDate", "EndDate"], ["TeacherContractId", "SubjectId"]),
+        new("academic", "TeachingAssignment", "IX_TeachingAssignment_SubjectId", false, ["SubjectId"], []),
+        new("academic", "TeachingAssignment", "IX_TeachingAssignment_TeacherContractId_StartDate_EndDate", false,
+            ["TeacherContractId", "StartDate", "EndDate"], ["ClassGroupId", "SubjectId"]),
+        new("academic", "TeachingAssignment", "UQ_TeachingAssignment_Contract_Group_Subject", true,
+            ["TeacherContractId", "ClassGroupId", "SubjectId"], []),
+
+        new("academic", "ClassSchedule", "PK_ClassSchedule", true, ["TeachingAssignmentId", "Weekday"], []),
+    ];
+
+    // Metadata name columns (sys.tables/sys.columns/sys.indexes/...) carry the fixed SQL Server
+    // catalog collation, which is independent of the database's own collation; mixing several of
+    // them together (or with string literals) can otherwise raise "Cannot resolve collation
+    // conflict", so every composite [Value] below is pinned to COLLATE DATABASE_DEFAULT.
+    private const string P1IndexesSql = """
+        SELECT CONCAT(SCHEMA_NAME(t.[schema_id]),'.',t.[name],'.',i.[name],':',i.[is_unique],':',
+            ISNULL((SELECT STRING_AGG(CONCAT(c.[name],CASE WHEN ic.[is_descending_key]=1 THEN '-DESC' ELSE '' END), ',') WITHIN GROUP (ORDER BY ic.[key_ordinal])
+                    FROM sys.index_columns ic JOIN sys.columns c ON c.[object_id]=ic.[object_id] AND c.[column_id]=ic.[column_id]
+                    WHERE ic.[object_id]=i.[object_id] AND ic.[index_id]=i.[index_id] AND ic.[is_included_column]=0),''),':',
+            ISNULL((SELECT STRING_AGG(c.[name], ',') WITHIN GROUP (ORDER BY ic.[index_column_id])
+                    FROM sys.index_columns ic JOIN sys.columns c ON c.[object_id]=ic.[object_id] AND c.[column_id]=ic.[column_id]
+                    WHERE ic.[object_id]=i.[object_id] AND ic.[index_id]=i.[index_id] AND ic.[is_included_column]=1),''),':',
+            ISNULL(REPLACE(REPLACE(i.[filter_definition],' ',''),CHAR(10),''),'')) COLLATE DATABASE_DEFAULT AS [Value]
+        FROM sys.indexes i
+        JOIN sys.tables t ON t.[object_id]=i.[object_id]
+        WHERE i.[name] IS NOT NULL AND t.[name] IN ('Subject','TeachingAssignment','ClassSchedule')
+        ORDER BY [Value]
+        """;
+
+    private const string NonclusteredIncludesIdSql = """
+        SELECT CONCAT(SCHEMA_NAME(t.[schema_id]),'.',t.[name],'.',i.[name]) COLLATE DATABASE_DEFAULT AS [Value]
+        FROM sys.indexes i
+        JOIN sys.tables t ON t.[object_id]=i.[object_id]
+        JOIN sys.index_columns ic ON ic.[object_id]=i.[object_id] AND ic.[index_id]=i.[index_id]
+        JOIN sys.columns c ON c.[object_id]=ic.[object_id] AND c.[column_id]=ic.[column_id]
+        WHERE i.[type]=2 AND ic.[is_included_column]=1 AND c.[name]=N'Id'
+        """;
+
+    private const string P1IndexKeyColumnsSql = """
+        SELECT (CONCAT(SCHEMA_NAME(t.[schema_id]),'.',t.[name]) + '|' +
+            ISNULL((SELECT STRING_AGG(c.[name], ',') WITHIN GROUP (ORDER BY ic.[key_ordinal])
+                    FROM sys.index_columns ic JOIN sys.columns c ON c.[object_id]=ic.[object_id] AND c.[column_id]=ic.[column_id]
+                    WHERE ic.[object_id]=i.[object_id] AND ic.[index_id]=i.[index_id] AND ic.[is_included_column]=0),'')) COLLATE DATABASE_DEFAULT AS [Value]
+        FROM sys.indexes i
+        JOIN sys.tables t ON t.[object_id]=i.[object_id]
+        WHERE i.[name] IS NOT NULL AND t.[name] IN ('Subject','TeachingAssignment','ClassSchedule')
+        ORDER BY [Value]
+        """;
+
+    private const string P1ForeignKeyColumnsSql = """
+        SELECT (CONCAT(SCHEMA_NAME(t.[schema_id]),'.',t.[name]) + '|' + fk.[name] + '|' +
+            (SELECT STRING_AGG(pc.[name], ',') WITHIN GROUP (ORDER BY fkc.[constraint_column_id])
+             FROM sys.foreign_key_columns fkc
+             JOIN sys.columns pc ON pc.[object_id]=fkc.[parent_object_id] AND pc.[column_id]=fkc.[parent_column_id]
+             WHERE fkc.[constraint_object_id]=fk.[object_id])) COLLATE DATABASE_DEFAULT AS [Value]
+        FROM sys.foreign_keys fk
+        JOIN sys.tables t ON t.[object_id]=fk.[parent_object_id]
+        WHERE t.[name] IN ('Subject','TeachingAssignment','ClassSchedule')
         ORDER BY [Value]
         """;
 }

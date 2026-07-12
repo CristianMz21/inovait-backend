@@ -1,4 +1,5 @@
 using Inovait.Core.Domain.Academics;
+using Inovait.Core.Domain.Catalogs;
 using Inovait.Core.Domain.Common;
 using Inovait.Core.Domain.People;
 using Inovait.Core.Domain.Staff;
@@ -9,7 +10,9 @@ using Inovait.Infrastructure.Text;
 using Inovait.IntegrationTests.Infrastructure;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Inovait.IntegrationTests.Persistence;
@@ -89,7 +92,12 @@ public sealed class AuditConcurrencyTests(SqlServerFixture fixture)
         var context = scope.ServiceProvider.GetRequiredService<InovaitDbContext>();
         try
         {
-            await context.Database.MigrateAsync(TestContext.Current.CancellationToken);
+            // Pinned to the P0 migration boundary (not "latest") so this frozen evidence
+            // (IT-AUDIT-UTC-P0: exactly the seven P0 audited entities) stays an exact historical
+            // snapshot even though the P1 migrations now also exist in this assembly — Subject and
+            // TeachingAssignment share the same audited shape and would otherwise also match.
+            await context.GetService<IMigrator>().MigrateAsync(
+                "20260711161518_AddP0DatabaseProtections", TestContext.Current.CancellationToken);
             Assert.Equal(ExpectedAuditedTables, await context.Database.SqlQueryRaw<string>(AuditTableSql)
                 .ToArrayAsync(TestContext.Current.CancellationToken));
             Assert.Equal(["academic.Enrollment"], await context.Database.SqlQueryRaw<string>(
@@ -127,7 +135,10 @@ public sealed class AuditConcurrencyTests(SqlServerFixture fixture)
         var context = scope.ServiceProvider.GetRequiredService<InovaitDbContext>();
         try
         {
-            await context.Database.MigrateAsync(TestContext.Current.CancellationToken);
+            // Pinned to the P0 migration boundary for the same reason as the audit test above
+            // (IT-ROWVERSION-P0: exactly the seven P0 rowversion entities).
+            await context.GetService<IMigrator>().MigrateAsync(
+                "20260711161518_AddP0DatabaseProtections", TestContext.Current.CancellationToken);
             var entities = await SeedAuditGraphAsync(context);
             var keys = entities.Select(entity => (entity.GetType(), context.Entry(entity).Properties
                 .Where(property => property.Metadata.IsPrimaryKey()).Select(property => property.CurrentValue!).ToArray())).ToArray();
@@ -299,4 +310,130 @@ public sealed class AuditConcurrencyTests(SqlServerFixture fixture)
     private static readonly string[] ExpectedAuditedTables = ["academic.ClassGroup", "catalog.AcademicYear", "catalog.Grade", "catalog.School", "people.Person", "people.Teacher", "staff.TeacherContract"];
     private static readonly string[] ExpectedNonAuditedTables = ["catalog.AcademicConfiguration", "catalog.DocumentType", "people.Student"];
     private static readonly string[] ExpectedNonRowVersionTables = ["academic.Enrollment", "catalog.AcademicConfiguration", "catalog.DocumentType", "people.Student"];
+}
+
+// P1 extension (V2-T077): Subject/TeachingAssignment audit+rowversion and ClassSchedule creation-only shape.
+// Runs on an EnsureCreated schema because the P1 migration (AddP1TeachingModel, V2-T081) does not exist yet;
+// the SQL shape it asserts is identical to the migration path once that lands (V2-T083/V2-T087).
+[Collection(SqlServerCollection.Name)]
+[Trait("Priority", "P1")]
+public sealed class AuditConcurrencyTestsP1(SqlServerFixture fixture)
+{
+    private static readonly DateTime UpdateTimestamp = new(2030, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+
+    [Fact]
+    [Trait("Evidence", "IT-AUDIT-UTC-P1")]
+    public async Task P1AuditAllocation_HasExactDefaultsChecksAndRealUtcUpdates()
+    {
+        var connectionString = CreateDatabaseConnection("AuditP1");
+        await using var provider = CreateProvider(connectionString);
+        await using var scope = provider.CreateAsyncScope();
+        var context = scope.ServiceProvider.GetRequiredService<InovaitDbContext>();
+        try
+        {
+            await context.Database.EnsureCreatedAsync(TestContext.Current.CancellationToken);
+            Assert.Equal(["academic.TeachingAssignment", "catalog.Subject"], await context.Database.SqlQueryRaw<string>(AuditTableSql)
+                .ToArrayAsync(TestContext.Current.CancellationToken));
+            Assert.Equal(["academic.ClassSchedule"], await context.Database.SqlQueryRaw<string>(
+                "SELECT CONCAT(SCHEMA_NAME(t.[schema_id]),'.',t.[name]) AS [Value] FROM sys.tables t WHERE t.[name]='ClassSchedule' AND EXISTS (SELECT 1 FROM sys.columns c JOIN sys.default_constraints d ON d.[object_id]=c.[default_object_id] WHERE c.[object_id]=t.[object_id] AND c.[name]='CreatedAtUtc') AND NOT EXISTS (SELECT 1 FROM sys.columns c WHERE c.[object_id]=t.[object_id] AND c.[name] IN ('UpdatedAtUtc','RowVersion')) ORDER BY [Value]")
+                .ToArrayAsync(TestContext.Current.CancellationToken));
+
+            var (subject, assignment) = await SeedP1AuditGraphAsync(context);
+            var createdSubject = subject.CreatedAtUtc;
+            var createdAssignment = assignment.CreatedAtUtc;
+            context.Entry(subject).Property(nameof(IAuditableEntity.UpdatedAtUtc)).IsModified = true;
+            context.Entry(assignment).Property(nameof(IAuditableEntity.UpdatedAtUtc)).IsModified = true;
+            await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+            Assert.Equal((createdSubject, UpdateTimestamp), (subject.CreatedAtUtc, subject.UpdatedAtUtc));
+            Assert.Equal((createdAssignment, UpdateTimestamp), (assignment.CreatedAtUtc, assignment.UpdatedAtUtc));
+        }
+        finally
+        {
+            await context.Database.EnsureDeletedAsync(TestContext.Current.CancellationToken);
+        }
+    }
+
+    [Fact]
+    [Trait("Evidence", "IT-ROWVERSION-P1")]
+    public async Task P1RowVersionAllocation_RejectsStaleUpdatesAndOmitsClassSchedule()
+    {
+        var connectionString = CreateDatabaseConnection("RowVersionP1");
+        await using var provider = CreateProvider(connectionString);
+        await using var scope = provider.CreateAsyncScope();
+        var context = scope.ServiceProvider.GetRequiredService<InovaitDbContext>();
+        try
+        {
+            await context.Database.EnsureCreatedAsync(TestContext.Current.CancellationToken);
+            var (subject, assignment) = await SeedP1AuditGraphAsync(context);
+            var subjectKey = new object[] { subject.Id };
+            var assignmentKey = new object[] { assignment.Id };
+            context.ChangeTracker.Clear();
+
+            await AssertStaleUpdateAsync(connectionString, typeof(Subject), subjectKey);
+            await AssertStaleUpdateAsync(connectionString, typeof(TeachingAssignment), assignmentKey);
+
+            Assert.Equal(["academic.ClassSchedule"], await context.Database.SqlQueryRaw<string>(
+                "SELECT CONCAT(SCHEMA_NAME(t.[schema_id]),'.',t.[name]) AS [Value] FROM sys.tables t WHERE t.[name]='ClassSchedule' AND NOT EXISTS (SELECT 1 FROM sys.columns c WHERE c.[object_id]=t.[object_id] AND c.[name]='RowVersion') ORDER BY [Value]")
+                .ToArrayAsync(TestContext.Current.CancellationToken));
+        }
+        finally
+        {
+            await context.Database.EnsureDeletedAsync(TestContext.Current.CancellationToken);
+        }
+    }
+
+    private static ServiceProvider CreateProvider(string connectionString)
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton<TimeProvider>(new FixedTimeProvider(UpdateTimestamp));
+        services.AddInovaitInfrastructure(connectionString);
+        return services.BuildServiceProvider(validateScopes: true);
+    }
+
+    private string CreateDatabaseConnection(string suffix) => new SqlConnectionStringBuilder(fixture.ConnectionString)
+    {
+        InitialCatalog = $"InovaitS13A{suffix}_{Guid.NewGuid():N}",
+    }.ConnectionString;
+
+    private static async Task<(Subject Subject, TeachingAssignment Assignment)> SeedP1AuditGraphAsync(InovaitDbContext context)
+    {
+        var subject = new Subject($"SUB-{Guid.NewGuid():N}"[..10], "Mathematics");
+        context.Add(subject);
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+        var person = new Person(1, $"{Guid.NewGuid():N}", "Audit", "Assignment", new(1990, 1, 1));
+        context.Add(person);
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+        var teacher = new Teacher(person.Id);
+        var group = new ClassGroup(1, 1, 1, $"G-{Guid.NewGuid():N}"[..20]);
+        context.AddRange(teacher, group);
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+        var contract = new TeacherContract(teacher.PersonId, 1, new(2026, 1, 1), new(2026, 12, 31));
+        context.Add(contract);
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+        var assignment = new TeachingAssignment(contract.Id, group.Id, subject.Id, new(2026, 2, 1), new(2026, 11, 30));
+        context.Add(assignment);
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+        return (subject, assignment);
+    }
+
+    private static async Task AssertStaleUpdateAsync(string connectionString, Type entityType, object[] key)
+    {
+        var options = new DbContextOptionsBuilder<InovaitDbContext>().UseSqlServer(connectionString).Options;
+        await using var first = new InovaitDbContext(options);
+        await using var stale = new InovaitDbContext(options);
+        var firstCopy = (await first.FindAsync(entityType, key, TestContext.Current.CancellationToken))!;
+        var staleCopy = (await stale.FindAsync(entityType, key, TestContext.Current.CancellationToken))!;
+        first.Entry(firstCopy).Property(nameof(IAuditableEntity.UpdatedAtUtc)).CurrentValue = UpdateTimestamp.AddMinutes(1);
+        stale.Entry(staleCopy).Property(nameof(IAuditableEntity.UpdatedAtUtc)).CurrentValue = UpdateTimestamp.AddMinutes(2);
+        await first.SaveChangesAsync(TestContext.Current.CancellationToken);
+        await Assert.ThrowsAsync<DbUpdateConcurrencyException>(() => stale.SaveChangesAsync(TestContext.Current.CancellationToken));
+    }
+
+    private sealed class FixedTimeProvider(DateTimeOffset utcNow) : TimeProvider
+    {
+        public override DateTimeOffset GetUtcNow() => utcNow;
+    }
+
+    private const string AuditTableSql = "SELECT CONCAT(SCHEMA_NAME(t.[schema_id]),'.',t.[name]) AS [Value] FROM sys.tables t WHERE t.[name] IN ('Subject','TeachingAssignment') AND (SELECT COUNT(*) FROM sys.columns c JOIN sys.default_constraints d ON d.[object_id]=c.[default_object_id] WHERE c.[object_id]=t.[object_id] AND c.[name] IN ('CreatedAtUtc','UpdatedAtUtc'))=2 AND EXISTS (SELECT 1 FROM sys.columns c WHERE c.[object_id]=t.[object_id] AND c.[name]='RowVersion' AND c.[system_type_id]=189) AND EXISTS (SELECT 1 FROM sys.check_constraints ck WHERE ck.[parent_object_id]=t.[object_id] AND ck.[name]=CONCAT('CK_',t.[name],'_UpdatedAtUtc')) ORDER BY [Value]";
 }

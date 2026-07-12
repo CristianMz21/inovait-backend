@@ -1,11 +1,17 @@
--- Inovait P0 production model — from-scratch, transactional, idempotent setup script.
+-- Inovait P0+P1 production model — from-scratch, transactional, idempotent setup script.
 --
 -- Reproduces, on an empty SQL Server 2022 database, exactly what the EF Core migration
--- chain (20260711161500_InitialP0ProductionModel + 20260711161518_AddP0DatabaseProtections)
--- produces: 4 schemas, 11 tables with their columns/collations/defaults/checks/PKs/FKs/indexes,
--- 4 protective triggers, the locked-down `inovait_runtime` database role with its exact
+-- chain (20260711161500_InitialP0ProductionModel + 20260711161518_AddP0DatabaseProtections +
+-- 20260712001412_AddP1TeachingModel + 20260712010000_AddP1DatabaseProtections) produces:
+-- 4 schemas, 14 tables (11 P0 + catalog.Subject/academic.TeachingAssignment/academic.ClassSchedule)
+-- with their columns/collations/defaults/checks/PKs/FKs/indexes, 5 protective triggers (4 P0 +
+-- TR_Subject_ProtectCode), the locked-down `inovait_runtime` database role with its exact
 -- GRANT/DENY set, and the 5 canonical seed rows (School, AcademicYear, Grade, DocumentType,
--- AcademicConfiguration singleton).
+-- AcademicConfiguration singleton). No fictitious rows are seeded for Subject/TeachingAssignment/
+-- ClassSchedule: data-model.md's setup.sql responsibilities section only prescribes the fifth
+-- trigger for the P1 extension, and the business-scenario dataset (age boundaries, tied schools,
+-- multisector teachers, multi-assignment history) is built per-test by the S14–S17 report/history
+-- suites, not by production seed.
 --
 -- This script does NOT create a database or a login and stores no credentials. It is meant to
 -- run as a single batch (no `GO` separators) against an already-selected, empty database — e.g.
@@ -137,7 +143,27 @@ BEGIN TRY
         CREATE UNIQUE INDEX [UQ_Grade_SortOrder] ON [catalog].[Grade]([SortOrder]);
     END;
 
-    -- 6) people.Person
+    -- 6) catalog.Subject (P1)
+    IF OBJECT_ID(N'[catalog].[Subject]', N'U') IS NULL
+    BEGIN
+        CREATE TABLE [catalog].[Subject]
+        (
+            [Id] int NOT NULL IDENTITY(1,1),
+            [Code] varchar(20) COLLATE Latin1_General_100_CI_AS NOT NULL,
+            [Name] nvarchar(120) COLLATE Latin1_General_100_CI_AS NOT NULL,
+            [CreatedAtUtc] datetime2(3) NOT NULL DEFAULT SYSUTCDATETIME(),
+            [UpdatedAtUtc] datetime2(3) NOT NULL DEFAULT SYSUTCDATETIME(),
+            [RowVersion] rowversion NOT NULL,
+            CONSTRAINT [PK_Subject] PRIMARY KEY CLUSTERED ([Id]),
+            CONSTRAINT [CK_Subject_Code_NotBlank] CHECK (LEN(TRIM([Code])) > 0),
+            CONSTRAINT [CK_Subject_Name_NotBlank] CHECK (LEN(TRIM([Name])) > 0),
+            CONSTRAINT [CK_Subject_UpdatedAtUtc] CHECK ([UpdatedAtUtc] >= [CreatedAtUtc])
+        );
+        CREATE UNIQUE INDEX [UQ_Subject_Code] ON [catalog].[Subject]([Code]);
+        CREATE UNIQUE INDEX [UQ_Subject_Name] ON [catalog].[Subject]([Name]);
+    END;
+
+    -- 7) people.Person
     IF OBJECT_ID(N'[people].[Person]', N'U') IS NULL
     BEGIN
         CREATE TABLE [people].[Person]
@@ -166,7 +192,7 @@ BEGIN TRY
             INCLUDE ([DocumentTypeId],[DocumentNumber],[BirthDate]);
     END;
 
-    -- 7) people.Student (role table: PK == FK)
+    -- 8) people.Student (role table: PK == FK)
     IF OBJECT_ID(N'[people].[Student]', N'U') IS NULL
     BEGIN
         CREATE TABLE [people].[Student]
@@ -178,7 +204,7 @@ BEGIN TRY
         );
     END;
 
-    -- 8) people.Teacher (role table: PK == FK, audited)
+    -- 9) people.Teacher (role table: PK == FK, audited)
     IF OBJECT_ID(N'[people].[Teacher]', N'U') IS NULL
     BEGIN
         CREATE TABLE [people].[Teacher]
@@ -194,7 +220,7 @@ BEGIN TRY
         );
     END;
 
-    -- 9) academic.ClassGroup
+    -- 10) academic.ClassGroup
     IF OBJECT_ID(N'[academic].[ClassGroup]', N'U') IS NULL
     BEGIN
         CREATE TABLE [academic].[ClassGroup]
@@ -226,7 +252,7 @@ BEGIN TRY
             ON [academic].[ClassGroup]([SchoolId],[AcademicYearId],[GradeId],[Code]);
     END;
 
-    -- 10) academic.Enrollment
+    -- 11) academic.Enrollment
     IF OBJECT_ID(N'[academic].[Enrollment]', N'U') IS NULL
     BEGIN
         CREATE TABLE [academic].[Enrollment]
@@ -251,7 +277,7 @@ BEGIN TRY
             ON [academic].[Enrollment]([StudentPersonId],[AcademicYearId]);
     END;
 
-    -- 11) staff.TeacherContract
+    -- 12) staff.TeacherContract
     IF OBJECT_ID(N'[staff].[TeacherContract]', N'U') IS NULL
     BEGIN
         CREATE TABLE [staff].[TeacherContract]
@@ -291,10 +317,61 @@ BEGIN TRY
             ON [staff].[TeacherContract]([TeacherPersonId],[SchoolId],[StartDate],[EndDate]);
     END;
 
+    -- 13) academic.TeachingAssignment (P1)
+    IF OBJECT_ID(N'[academic].[TeachingAssignment]', N'U') IS NULL
+    BEGIN
+        CREATE TABLE [academic].[TeachingAssignment]
+        (
+            [Id] int NOT NULL IDENTITY(1,1),
+            [TeacherContractId] int NOT NULL,
+            [ClassGroupId] int NOT NULL,
+            [SubjectId] int NOT NULL,
+            [StartDate] date NOT NULL,
+            [EndDate] date NULL,
+            [CreatedAtUtc] datetime2(3) NOT NULL DEFAULT SYSUTCDATETIME(),
+            [UpdatedAtUtc] datetime2(3) NOT NULL DEFAULT SYSUTCDATETIME(),
+            [RowVersion] rowversion NOT NULL,
+            CONSTRAINT [PK_TeachingAssignment] PRIMARY KEY CLUSTERED ([Id]),
+            CONSTRAINT [CK_TeachingAssignment_DateRange] CHECK ([EndDate] IS NULL OR [EndDate] >= [StartDate]),
+            CONSTRAINT [CK_TeachingAssignment_UpdatedAtUtc] CHECK ([UpdatedAtUtc] >= [CreatedAtUtc]),
+            CONSTRAINT [FK_TeachingAssignment_ClassGroup] FOREIGN KEY ([ClassGroupId])
+                REFERENCES [academic].[ClassGroup]([Id]) ON DELETE NO ACTION,
+            CONSTRAINT [FK_TeachingAssignment_Subject] FOREIGN KEY ([SubjectId])
+                REFERENCES [catalog].[Subject]([Id]) ON DELETE NO ACTION,
+            CONSTRAINT [FK_TeachingAssignment_TeacherContract] FOREIGN KEY ([TeacherContractId])
+                REFERENCES [staff].[TeacherContract]([Id]) ON DELETE NO ACTION
+        );
+        CREATE INDEX [IX_TeachingAssignment_ClassGroupId_StartDate_EndDate]
+            ON [academic].[TeachingAssignment]([ClassGroupId],[StartDate],[EndDate])
+            INCLUDE ([TeacherContractId],[SubjectId]);
+        CREATE INDEX [IX_TeachingAssignment_SubjectId] ON [academic].[TeachingAssignment]([SubjectId]);
+        CREATE INDEX [IX_TeachingAssignment_TeacherContractId_StartDate_EndDate]
+            ON [academic].[TeachingAssignment]([TeacherContractId],[StartDate],[EndDate])
+            INCLUDE ([ClassGroupId],[SubjectId]);
+        CREATE UNIQUE INDEX [UQ_TeachingAssignment_Contract_Group_Subject]
+            ON [academic].[TeachingAssignment]([TeacherContractId],[ClassGroupId],[SubjectId]);
+    END;
+
+    -- 14) academic.ClassSchedule (P1)
+    IF OBJECT_ID(N'[academic].[ClassSchedule]', N'U') IS NULL
+    BEGIN
+        CREATE TABLE [academic].[ClassSchedule]
+        (
+            [TeachingAssignmentId] int NOT NULL,
+            [Weekday] tinyint NOT NULL,
+            [CreatedAtUtc] datetime2(3) NOT NULL DEFAULT SYSUTCDATETIME(),
+            CONSTRAINT [PK_ClassSchedule] PRIMARY KEY CLUSTERED ([TeachingAssignmentId],[Weekday]),
+            CONSTRAINT [CK_ClassSchedule_Weekday] CHECK ([Weekday] BETWEEN 1 AND 7),
+            CONSTRAINT [FK_ClassSchedule_TeachingAssignment] FOREIGN KEY ([TeachingAssignmentId])
+                REFERENCES [academic].[TeachingAssignment]([Id]) ON DELETE NO ACTION
+        );
+    END;
+
     ----------------------------------------------------------------------
-    -- Triggers (narrow, P0). CREATE OR ALTER is itself idempotent; each is
+    -- Triggers (narrow). CREATE OR ALTER is itself idempotent; each is
     -- dispatched through EXEC(N'...') because CREATE TRIGGER must be the
     -- first statement of its batch and this whole script is one batch.
+    -- Four are P0; TR_Subject_ProtectCode is the P1 extension.
     ----------------------------------------------------------------------
     EXEC(N'CREATE OR ALTER TRIGGER [catalog].[TR_School_ProtectStableValues] ON [catalog].[School] AFTER UPDATE AS
     BEGIN
@@ -327,6 +404,14 @@ BEGIN TRY
         SET NOCOUNT ON;
         IF EXISTS (SELECT 1 FROM deleted)
             THROW 51004, ''AcademicConfiguration cannot be deleted.'', 1;
+    END');
+
+    EXEC(N'CREATE OR ALTER TRIGGER [catalog].[TR_Subject_ProtectCode] ON [catalog].[Subject] AFTER UPDATE AS
+    BEGIN
+        SET NOCOUNT ON;
+        IF EXISTS (SELECT 1 FROM inserted i JOIN deleted d ON i.[Id]=d.[Id] WHERE
+            CONVERT(varbinary(8000),i.[Code])<>CONVERT(varbinary(8000),d.[Code]))
+            THROW 51007, ''Subject Code is immutable.'', 1;
     END');
 
     ----------------------------------------------------------------------

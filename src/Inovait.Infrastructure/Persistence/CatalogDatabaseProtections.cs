@@ -45,6 +45,15 @@ public static class CatalogDatabaseProtections
         END
         """,
         """
+        CREATE OR ALTER TRIGGER [catalog].[TR_Subject_ProtectCode] ON [catalog].[Subject] AFTER UPDATE AS
+        BEGIN
+            SET NOCOUNT ON;
+            IF EXISTS (SELECT 1 FROM inserted i JOIN deleted d ON i.[Id]=d.[Id] WHERE
+                CONVERT(varbinary(8000),i.[Code])<>CONVERT(varbinary(8000),d.[Code]))
+                THROW 51007, 'Subject Code is immutable.', 1;
+        END
+        """,
+        """
         IF EXISTS (SELECT 1 FROM sys.database_principals WHERE [name]=N'inovait_runtime' AND [type]<>'R')
             THROW 51005, 'Principal inovait_runtime must be a database role.', 1;
         IF DATABASE_PRINCIPAL_ID(N'inovait_runtime') IS NULL CREATE ROLE [inovait_runtime];

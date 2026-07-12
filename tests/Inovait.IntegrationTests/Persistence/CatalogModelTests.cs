@@ -29,7 +29,9 @@ public sealed class CatalogModelTests(SqlServerFixture fixture) : IAsyncLifetime
         var tables = await _context.Database.SqlQueryRaw<string>(
             "SELECT CONCAT(SCHEMA_NAME([schema_id]), '.', [name]) AS [Value] FROM sys.tables WHERE [schema_id]=SCHEMA_ID('catalog') ORDER BY [name]")
             .ToArrayAsync(TestContext.Current.CancellationToken);
-        Assert.Equal(["catalog.AcademicConfiguration", "catalog.AcademicYear", "catalog.DocumentType", "catalog.Grade", "catalog.School"], tables);
+        // catalog.Subject is P1 (V2-T078/V2-T079); this P0 evidence (IT-CATALOG-SCHEMA-S03) only asserts
+        // the five P0 catalog tables below and does not re-validate Subject's own mapping.
+        Assert.Equal(["catalog.AcademicConfiguration", "catalog.AcademicYear", "catalog.DocumentType", "catalog.Grade", "catalog.School", "catalog.Subject"], tables);
 
         Type[] entityTypes = [typeof(School), typeof(AcademicYear), typeof(AcademicConfiguration), typeof(Grade), typeof(DocumentType)];
         foreach (var type in entityTypes)
@@ -150,6 +152,7 @@ public sealed class CatalogModelTests(SqlServerFixture fixture) : IAsyncLifetime
         Assert.Equal(PropertySaveBehavior.Throw, AfterSave<School>(nameof(School.Sector)));
         Assert.Equal(PropertySaveBehavior.Throw, AfterSave<AcademicYear>(nameof(AcademicYear.Code)));
         Assert.Equal(PropertySaveBehavior.Throw, AfterSave<Grade>(nameof(Grade.Code)));
+        Assert.Equal(PropertySaveBehavior.Throw, AfterSave<Subject>(nameof(Subject.Code)));
         Assert.Equal(PropertySaveBehavior.Save, AfterSave<School>(nameof(School.Name)));
 
         var school = new School("SCH-01", "Original name", SchoolSector.Public);
@@ -181,6 +184,13 @@ public sealed class CatalogModelTests(SqlServerFixture fixture) : IAsyncLifetime
         await AssertProtectedUpdate("UPDATE [catalog].[School] SET [Sector]='public' WHERE [Code]='SCH-001'", 51001);
         await AssertProtectedUpdate("UPDATE [catalog].[AcademicYear] SET [Code]='ay-2026' WHERE [Code]='AY-2026'", 51002);
         await AssertProtectedUpdate("UPDATE [catalog].[Grade] SET [Code]='g01' WHERE [Code]='G01'", 51003);
+
+        // TR_Subject_ProtectCode (51007) on the EnsureCreated path; SetupSqlParityTestsP1 proves
+        // the same trigger on the migrated path.
+        var subject = new Subject("SUB-001", "Mathematics");
+        _context.Add(subject);
+        await _context.SaveChangesAsync(TestContext.Current.CancellationToken);
+        await AssertProtectedUpdate("UPDATE [catalog].[Subject] SET [Code]='sub-001' WHERE [Code]='SUB-001'", 51007);
     }
 
     [Fact]
