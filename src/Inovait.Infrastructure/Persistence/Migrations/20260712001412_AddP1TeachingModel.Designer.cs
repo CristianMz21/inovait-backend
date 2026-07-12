@@ -4,6 +4,7 @@ using Inovait.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Inovait.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(InovaitDbContext))]
-    partial class InovaitDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260712001412_AddP1TeachingModel")]
+    partial class AddP1TeachingModel
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
