@@ -120,6 +120,10 @@ dotnet run --project src/Inovait.Api -c Release --no-build
 
 `./scripts/run-p0-tests.sh`, validado en V2-T071, parsea los 37 IDs del manifest canónico, verifica cada uno con `--list-tests --filter "Priority=P0&Evidence=<ID>"` y solo después corre la suite completa `Priority=P0`; termina con `P0 GATE PASSED: 37/37`.
 
+### Despliegue local integrado (backend + frontend)
+
+Para levantar SQL Server + API + frontend con un solo comando (en vez de los pasos manuales de arriba), usar `./scripts/deploy-local.sh` (Linux/macOS) o `powershell -ExecutionPolicy Bypass -File scripts\deploy-local.ps1` (Windows), ambos en la raíz del repo backend. Siembra datos de demo ficticios (opt-out `--no-demo-data`/`-NoDemoData`) porque el seed canónico no alcanza para probar el formulario de matrícula del frontend, y sirve la API en `http://localhost:5000` y el frontend en `http://localhost:4200`. Detalle completo de parámetros, qué hace cada paso y teardown en el [README](../../README.md#despliegue-local-integrado-backend--frontend).
+
 ## Ejecutar pruebas P0 futuras
 
 ```bash

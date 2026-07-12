@@ -84,7 +84,61 @@ docker compose -f compose.yaml up -d --wait
 
 La API se apunta al contenedor con la misma clave runtime de siempre, `ConnectionStrings__InovaitDatabase`, y `database/setup.sql` se aplica con `sqlcmd` sobre la base vacía (14 tablas, paridad con la migración). El runner `./scripts/run-p0-tests.sh` valida los 37 IDs del manifest P0 canónico y termina con `P0 GATE PASSED: 37/37`; el runner `./scripts/run-p1-tests.sh` valida los 13 IDs del manifest P1 canónico y termina con `P1 GATE PASSED: 13/13`. Detalle completo en [quickstart.md](specs/001-school-enrollment-management/quickstart.md).
 
+Este flujo manual (SQL Server + `setup.sql`) queda documentado aquí como evidencia histórica de gate; para levantar el stack completo (SQL Server + API + frontend) de una sola vez, usar el script descrito en [Despliegue local integrado](#despliegue-local-integrado-backend--frontend) a continuación.
+
 Consultar [quickstart.md](specs/001-school-enrollment-management/quickstart.md), [assessment-baseline.md](docs/assessment-baseline.md) y [requirements-traceability.md](docs/requirements-traceability.md).
+
+## Despliegue local integrado (backend + frontend)
+
+Para levantar el stack completo (SQL Server + API + frontend) con un solo comando, sin pasos manuales, usar:
+
+```bash
+./scripts/deploy-local.sh
+```
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\deploy-local.ps1
+```
+
+### Qué hace
+
+1. Verifica prerrequisitos (Docker, .NET `10.x`, Node + npm, puertos libres); `--check-only` / `-CheckOnly` corre solo esta verificación y termina.
+2. Levanta SQL Server 2022 vía `docker compose` con `MSSQL_SA_PASSWORD` generada en memoria — se imprime una sola vez al final y nunca se escribe a disco.
+3. Crea la base `Inovait` y aplica `database/setup.sql` (14 tablas) de forma idempotente.
+4. Siembra datos de demo ficticios de evaluación local (detalle abajo); opt-out con `--no-demo-data` / `-NoDemoData`.
+5. Levanta la API en `http://localhost:5000` (`--no-launch-profile`, connection string efímera vía `ConnectionStrings__InovaitDatabase` con `TrustServerCertificate=True` solo contra el certificado autofirmado del contenedor) y espera `/health/ready`.
+6. Levanta el frontend Angular con `ng serve --configuration production` (HTTP real, mocks apagados) en `http://localhost:4200`. Abrir por `localhost`, no `127.0.0.1`: el allowlist de CORS del backend solo incluye el origen `localhost`.
+
+### Parámetros
+
+| Parámetro (bash) | Parámetro (PowerShell) | Descripción |
+| --- | --- | --- |
+| `--api-port <port>` | `-ApiPort <port>` | Puerto de la API (default `5000`). |
+| `--sql-port <port>` | `-SqlPort <port>` | Puerto host del contenedor SQL Server (default `1433`). |
+| `--frontend-path <path>` | `-FrontendPath <path>` | Ruta al checkout de `inovait-frontend` (default `../inovait-frontend`, relativo a este repo). |
+| `--sa-password <password>` | `-SaPassword <password>` | Password SA de SQL Server (default: generada en runtime). |
+| `--skip-frontend` | `-SkipFrontend` | Omite build/serve del frontend Angular. |
+| `--no-demo-data` | `-NoDemoData` | Omite el seed de datos ficticios de evaluación local. |
+| `--down` | `-Down` | Da de baja un stack levantado previamente. |
+| `--check-only` | `-CheckOnly` | Corre solo los chequeos de prerrequisitos y termina. |
+
+### Datos de demo (ficticios, opt-out)
+
+El seed canónico de producción solo trae `DocumentType` `CC` y ningún grupo/docente, mientras que el formulario de alta de matrícula del frontend ofrece DNI/PAS/CE como ejemplos del contrato; sin datos de demo, cualquier intento de alta devuelve `404`. Por eso el script siembra, de forma idempotente y solo para evaluación local:
+
+- `DocumentType` DNI/PAS/CE.
+- `School` `SCH-002`, `ClassGroup` `CG-01`.
+- Docente Ana Gomez (`TCH-0001`) con contrato `Confirmed` en la escuela 1.
+- `Subject` `MATH` con un `TeachingAssignment` sobre `CG-01` (días de semana 1 y 3).
+
+Omitir con `--no-demo-data` (bash) o `-NoDemoData` (PowerShell).
+
+### URLs y teardown
+
+- API: `http://localhost:5000` (`/health/ready`).
+- Frontend: `http://localhost:4200`.
+- Baja completa: `./scripts/deploy-local.sh --down` (o `-Down` en PowerShell) — mata los PID registrados y corre `docker compose down -v`.
+- Estado y logs quedan en `.local-stack/` (gitignored).
 
 ## Fuera de alcance
 
