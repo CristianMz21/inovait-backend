@@ -13,6 +13,53 @@
 
 La matriz cubre 63 REQ, 35 SCN, 5 BQ, 9 OUT, 15 `operationId` y 103 tareas del task set `production-model-v2.0.0`. P0 comprende V2-T001–V2-T075; P1 condicional V2-T076–V2-T099; cierre V2-T100–V2-T103. Los IDs v1 `T001`–`T076` no son ejecutables; ver [task-id-supersession.md](./task-id-supersession.md).
 
+## Mapeo del caso PDF a la implementación
+
+`docs/assessment-baseline.md` preserva la transcripción estructurada del caso técnico original (PDF INOVAIT full stack); su sección "Mapeo a fuentes canónicas" liga ese texto a artefactos de especificación (`spec.md`, `data-model.md`, `paths/*.yaml`) que en ese momento eran futuros. Esta sección cierra el último tramo: liga cada elemento del PDF directamente a la evidencia runtime entregada (endpoint, constraint SQL, ruta de UI) para que un evaluador trace PDF → implementación sin pasos intermedios.
+
+### Las 5 preguntas del caso
+
+| BQ | Pregunta preservada (`assessment-baseline.md`) | Cómo se responde |
+| --- | --- | --- |
+| BQ-001 | ¿Cuántos estudiantes tienen entre 3 y 7 años? | `getAgeDistribution` (`GET /api/reports/age-distribution`), rango 3–7 del response; UI `/reports`. |
+| BQ-002 | ¿Cómo se distribuyen en 3–7, 8–12 y mayores de 12 años? | mismo reporte, los tres rangos (3–7, 8–12, ≥13); menores de 3 excluidos de los tres rangos por REQ-032. |
+| BQ-003 | ¿Cuántos docentes distintos trabajan en escuelas públicas y privadas? | `getDistinctTeacherCountsBySector` (`GET /api/reports/teacher-counts-by-sector`), COUNT DISTINCT por sector con intersección de período; UI `/reports`. |
+| BQ-004 | ¿Qué escuela o escuelas tienen la mayor cantidad de estudiantes? | `getTopSchoolsByEnrollment` (`GET /api/reports/top-schools`), empates preservados; UI `/reports`. |
+| BQ-005 | ¿Cuál es la historia anual de un estudiante, incluidos grado, grupo, docentes y materias? | `getStudentHistory` (`GET /api/students/{documentType}/{documentNumber}/history`), línea de tiempo con asignaciones docentes (materia+docente+weekdays); UI `/student-history`. |
+
+Evidencia: `src/Inovait.Api/Endpoints/ReportEndpoints.cs`, `src/Inovait.Api/Endpoints/StudentHistoryEndpoints.cs`; rangos exactos en `src/Inovait.Api/Reads/ReportReadService.cs:43-45`.
+
+### Las 6 reglas de negocio
+
+| # | Regla preservada (`assessment-baseline.md`) | Garantía técnica |
+| --- | --- | --- |
+| 1 | Un docente puede trabajar simultáneamente en más de una escuela. | `TeacherContract` independiente por escuela; workflow atómico multiescuela `EfTeacherContractWorkflow` (`src/Inovait.Infrastructure/Features/TeacherContracts/EfTeacherContractWorkflow.cs`): `OverlapsAsync` filtra por `SchoolId`, así que el solape se rechaza **por escuela** y se permite **entre escuelas**. |
+| 2 | Un estudiante pertenece a una sola escuela dentro del alcance considerado. | `UQ_Enrollment_StudentPersonId_AcademicYearId` (una matrícula por estudiante y año; `EnrollmentConfiguration.cs:21-22`) + FK compuesto `(ClassGroupId, AcademicYearId)` hacia la alternate key `UQ_ClassGroup_Id_AcademicYear_ForEnrollment` de `ClassGroup` (`EnrollmentConfiguration.cs:28-32`, `ClassGroupConfiguration.cs:23-24`): el grupo fija el colegio vía `ClassGroup.SchoolId`, imposible doble colegio simultáneo en el mismo año. |
+| 3 | Todas las escuelas pertenecen a la misma ciudad. | alcance mono-ciudad del modelo, sin entidad `City`; documentado en `docs/assessment-baseline.md` (Tecnología y alcance / Reglas de negocio originales) y `specs/001-school-enrollment-management/spec.md` (líneas 297, 385). |
+| 4 | Cada escuela es pública o privada. | `School.Sector` con `CHECK CK_School_Sector IN ('Public','Private')` (`SchoolConfiguration.cs:16-17`). |
+| 5 | Las escuelas registran estudiantes por grado. | `ClassGroup(SchoolId, GradeId, AcademicYearId)` (`ClassGroupConfiguration.cs`) + matrícula vía `Enrollment.ClassGroupId`. |
+| 6 | Los estudiantes pertenecen a un grupo dentro del grado y el cambio de grupo debe conservarse entre años. | `Enrollment` histórico (una fila por `AcademicYear`, sin sobrescritura) + `getStudentHistory` reconstruye la línea de tiempo completa de grupos y docentes por año. |
+
+### Los 3 puntos funcionales
+
+| Punto (`assessment-baseline.md`) | Implementación |
+| --- | --- |
+| Crear un estudiante asociado a escuela, grado, grupo y año. | `createEnrollment` (`POST /api/enrollments`) con identidad reutilizable (`StudentReused`, `src/Inovait.Api/Endpoints/EnrollmentEndpoints.cs:35`); UI `/enrollments`. |
+| Consultar estudiantes aplicando conjuntamente escuela, grado y año. | `listEnrollments` (`GET /api/enrollments`, filtros `schoolId`/`gradeId`/`academicYearId`); UI `/student-search`. |
+| Asignar o contratar un docente en varias escuelas y consultar esas relaciones. | `createTeacherContracts` multiescuela (`POST /api/teachers/{teacherId}/contracts`); UI `/teacher-contracts`; consultable en BD vía `listTeacherContracts` (`GET /api/teachers/{teacherId}/contracts`) y directamente en la tabla `staff.TeacherContract`. |
+
+### Los 3 entregables
+
+| Entregable | Ubicación |
+| --- | --- |
+| Código fuente frontend | `../inovait-frontend` (checkout hermano); rutas `/enrollments`, `/student-search`, `/teacher-contracts`, `/reports`, `/student-history` (`inovait-frontend/src/app/app.routes.ts`). |
+| Código fuente backend | este repositorio (.NET 10 / ASP.NET Core / EF Core / SQL Server 2022). |
+| Script de base de datos | `database/setup.sql` (esquema de 14 tablas + seed canónico) + `database/demo-data.sql` (datos ficticios necesarios para ejecutar las funcionalidades); ambos idempotentes, aplicables de forma standalone con `sqlcmd` y automatizados por `scripts/deploy-local.sh` / `scripts/deploy-local.ps1`. |
+
+### Nota de diagrama
+
+El cuarto entregable original de `assessment-baseline.md`, el modelo entidad-relación, está dibujado (mermaid, 14 tablas) en `docs/entity-relationship-model.md`.
+
 ## Operaciones HTTP
 
 El modelo de persistencia no altera el contrato. Los 15 `operationId` siguen siendo:

@@ -86,7 +86,7 @@ La API se apunta al contenedor con la misma clave runtime de siempre, `Connectio
 
 Este flujo manual (SQL Server + `setup.sql`) queda documentado aquí como evidencia histórica de gate; para levantar el stack completo (SQL Server + API + frontend) de una sola vez, usar el script descrito en [Despliegue local integrado](#despliegue-local-integrado-backend--frontend) a continuación.
 
-Consultar [quickstart.md](specs/001-school-enrollment-management/quickstart.md), [assessment-baseline.md](docs/assessment-baseline.md) y [requirements-traceability.md](docs/requirements-traceability.md).
+Consultar [quickstart.md](specs/001-school-enrollment-management/quickstart.md), [assessment-baseline.md](docs/assessment-baseline.md) y [requirements-traceability.md](docs/requirements-traceability.md). Modelo entidad-relación (diagrama): [entity-relationship-model.md](docs/entity-relationship-model.md).
 
 ## Despliegue local integrado (backend + frontend)
 
@@ -124,7 +124,7 @@ powershell -ExecutionPolicy Bypass -File scripts\deploy-local.ps1
 
 ### Datos de demo (ficticios, opt-out)
 
-El seed canónico de producción solo trae `DocumentType` `CC` y ningún grupo/docente, mientras que el formulario de alta de matrícula del frontend ofrece DNI/PAS/CE como ejemplos del contrato; sin datos de demo, cualquier intento de alta devuelve `404`. Por eso el script siembra, de forma idempotente y solo para evaluación local:
+El seed canónico de producción solo trae `DocumentType` `CC` y ningún grupo/docente, mientras que el formulario de alta de matrícula del frontend ofrece DNI/PAS/CE como ejemplos del contrato; sin datos de demo, cualquier intento de alta devuelve `404`. Este seed vive versionado como script propio, [`database/demo-data.sql`](database/demo-data.sql): `deploy-local.sh`/`deploy-local.ps1` lo aplican automáticamente (opt-out con `--no-demo-data` / `-NoDemoData`), pero también es aplicable de forma standalone con `sqlcmd -i database/demo-data.sql` sobre una base ya creada con `setup.sql`. Junto con [`database/setup.sql`](database/setup.sql), forman en conjunto el entregable de script de base de datos (esquema + datos necesarios para ejecutar las funcionalidades). El script siembra, de forma idempotente y solo para evaluación local:
 
 - `DocumentType` DNI/PAS/CE.
 - `School` `SCH-002`, `ClassGroup` `CG-01`.
