@@ -54,7 +54,7 @@ Evidencia: `src/Inovait.Api/Endpoints/ReportEndpoints.cs`, `src/Inovait.Api/Endp
 | --- | --- |
 | Código fuente frontend | `../inovait-frontend` (checkout hermano); rutas `/enrollments`, `/student-search`, `/teacher-contracts`, `/reports`, `/student-history` (`inovait-frontend/src/app/app.routes.ts`). |
 | Código fuente backend | este repositorio (.NET 10 / ASP.NET Core / EF Core / SQL Server 2022). |
-| Script de base de datos | `database/setup.sql` (esquema de 14 tablas + seed canónico) + `database/demo-data.sql` (datos ficticios necesarios para ejecutar las funcionalidades); ambos idempotentes, aplicables de forma standalone con `sqlcmd` y automatizados por `scripts/deploy-local.sh` / `scripts/deploy-local.ps1`. |
+| Script de base de datos | `database/setup.sql` (esquema de 14 tablas + seed canónico) + `database/seed-demo.sql` (dataset ficticio de evaluación, ver [docs/SEED_DATA.md](SEED_DATA.md)) + `database/reset-demo.sql` (limpieza segura del mismo dataset); todos idempotentes, aplicables de forma standalone con `sqlcmd` y automatizados por `scripts/deploy-local.sh` / `scripts/deploy-local.ps1`. |
 
 ### Nota de diagrama
 

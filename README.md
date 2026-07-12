@@ -57,7 +57,7 @@ Puertos libres necesarios: `1433` (SQL Server), `5000` (API) y `4200` (frontend)
    ./scripts/deploy-local.sh --down        # o -Down en PowerShell
    ```
 
-Qué hace el script, en orden: chequea prerrequisitos → levanta SQL Server 2022 vía `docker compose` (password SA generada en memoria, impresa una sola vez, nunca escrita a disco) → crea la base `Inovait` y aplica [`database/setup.sql`](database/setup.sql) (14 tablas, idempotente) → siembra [`database/demo-data.sql`](database/demo-data.sql) (datos ficticios de evaluación, opt-out) → inicia la API en `:5000` esperando `/health/ready` → sirve el frontend en `:4200` con configuración de producción (HTTP real, sin mocks). Estado y logs quedan en `.local-stack/` (gitignored).
+Qué hace el script, en orden: chequea prerrequisitos → levanta SQL Server 2022 vía `docker compose` (password SA generada en memoria, impresa una sola vez, nunca escrita a disco) → crea la base `Inovait` y aplica [`database/setup.sql`](database/setup.sql) (14 tablas, idempotente) → siembra [`database/seed-demo.sql`](database/seed-demo.sql) (dataset ficticio de evaluación, opt-out — detalle completo en [docs/SEED_DATA.md](docs/SEED_DATA.md)) → inicia la API en `:5000` esperando `/health/ready` → sirve el frontend en `:4200` con configuración de producción (HTTP real, sin mocks). Estado y logs quedan en `.local-stack/` (gitignored).
 
 ### Parámetros del script
 
@@ -87,12 +87,12 @@ Los mismos pasos que automatiza `deploy-local`, uno a uno:
 
    ```bash
    docker compose cp database/setup.sql sql-server:/tmp/setup.sql
-   docker compose cp database/demo-data.sql sql-server:/tmp/demo-data.sql
-   docker compose exec -u root sql-server chmod 0444 /tmp/setup.sql /tmp/demo-data.sql
+   docker compose cp database/seed-demo.sql sql-server:/tmp/seed-demo.sql
+   docker compose exec -u root sql-server chmod 0444 /tmp/setup.sql /tmp/seed-demo.sql
    docker compose exec sql-server /opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P "$MSSQL_SA_PASSWORD" \
      -Q "IF DB_ID('Inovait') IS NULL CREATE DATABASE Inovait"
    docker compose exec sql-server /opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P "$MSSQL_SA_PASSWORD" -d Inovait -i /tmp/setup.sql
-   docker compose exec sql-server /opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P "$MSSQL_SA_PASSWORD" -d Inovait -i /tmp/demo-data.sql
+   docker compose exec sql-server /opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P "$MSSQL_SA_PASSWORD" -d Inovait -i /tmp/seed-demo.sql
    ```
 
    Alternativa equivalente: aplicar la cadena de migraciones EF (`dotnet ef database update`); `setup.sql` está en paridad verificada con las migraciones.
@@ -129,10 +129,11 @@ Las pruebas de integración usan Testcontainers (SQL Server 2022 CU14 real, imag
 | `src/Inovait.Infrastructure` | EF Core: DbContext, configuraciones, migraciones, seeds, protecciones SQL. |
 | `src/Inovait.Api` | Minimal APIs: endpoints, DTOs, ProblemDetails RFC 7807, health checks. |
 | `tests/` | `Inovait.UnitTests` + `Inovait.IntegrationTests` (Testcontainers). |
-| `database/` | Entregable de BD: `setup.sql` (esquema + seed canónico) y `demo-data.sql` (datos de demo). |
+| `database/` | Entregable de BD: `setup.sql` (esquema + seed canónico), `seed-demo.sql` y `reset-demo.sql` (dataset de demo, ver [docs/SEED_DATA.md](docs/SEED_DATA.md)). |
 | `scripts/` | `deploy-local.{sh,ps1}`, runners de evidencia P0/P1. |
 | `specs/001-school-enrollment-management/` | Especificación canónica y contrato OpenAPI inmutable. |
-| `docs/` | [Diagrama ER](docs/entity-relationship-model.md), [trazabilidad](docs/requirements-traceability.md), [caso original](docs/assessment-baseline.md), [evidencia del evaluador](docs/evaluator-execution.md). |
+| `requests/` | `evaluator.http` (REST Client): flujo manual de evaluación sobre el dataset de demo. |
+| `docs/` | [Diagrama ER](docs/entity-relationship-model.md), [trazabilidad](docs/requirements-traceability.md), [caso original](docs/assessment-baseline.md), [evidencia del evaluador](docs/evaluator-execution.md), [dataset de demo](docs/SEED_DATA.md). |
 
 ## Contrato HTTP canónico
 
@@ -167,12 +168,7 @@ Produce `802c13b91bf5c6425d24c540b6841a2abe134e084ea310fc2b7041e32c24a81a  -`.
 
 ## Datos de demo (ficticios, opt-out)
 
-El seed canónico de producción solo trae `DocumentType` `CC` y ningún grupo/docente; el formulario de matrícula del frontend ofrece DNI/PAS/CE (ejemplos del contrato), de modo que sin datos de demo cualquier alta devuelve `404`. [`database/demo-data.sql`](database/demo-data.sql) siembra, de forma idempotente y solo para evaluación local:
-
-- `DocumentType` DNI/PAS/CE.
-- `School` `SCH-002` y `ClassGroup` `CG-01`.
-- Docente Ana Gomez (`TCH-0001`) con contrato `Confirmed` en la escuela 1.
-- `Subject` `MATH` con un `TeachingAssignment` sobre `CG-01` (días 1 y 3).
+El seed canónico de producción solo trae `DocumentType` `CC` y ningún grupo/docente; el formulario de matrícula del frontend ofrece DNI/PAS/CE (ejemplos del contrato), de modo que sin datos de demo cualquier alta devuelve `404`. [`database/seed-demo.sql`](database/seed-demo.sql) siembra, de forma idempotente y solo para evaluación local, un dataset estricto pensado para ejercitar las cinco preguntas del caso con resultados exactos (24 estudiantes, 4 colegios, 40 matrículas históricas, 8 docentes con contratos activos/simultáneos/vencido/futuro). [`database/reset-demo.sql`](database/reset-demo.sql) limpia ese mismo dataset de forma segura (namespace `DEMO-%`/`COL-%`, nunca toca el seed canónico). Supersede al `demo-data.sql` anterior (eliminado). Detalle completo del dataset, comandos de aplicación/reset y las respuestas esperadas de las cinco preguntas: [docs/SEED_DATA.md](docs/SEED_DATA.md).
 
 ## Estado de la entrega y evidencia
 
