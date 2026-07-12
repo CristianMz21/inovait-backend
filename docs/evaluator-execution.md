@@ -81,6 +81,9 @@ La salida esperada incluye `401` y `human gate failed: 401 > 400`; el último `t
 | S10 (V2-T058–V2-T061) | `52cbb518f5f47aee8fda12e097cdbfb83f97bfb4` | `52cbb518f5f47aee8fda12e097cdbfb83f97bfb4` | `3212b4ee2f1ec4070fdb1b70d6ee823483fd5b57` | PASS: sin salida generada, 99 líneas humanas, dentro del límite sin excepción; S10 cerrado. |
 | S11 (V2-T062–V2-T067) | `5eb43965448010d6ee86acbed9ff7133738f9e82` | `5eb43965448010d6ee86acbed9ff7133738f9e82` | `21833491b5df294e776ad7439a8a06c5143d08c9` | PASS: sin salida generada, 274 líneas humanas, dentro del límite sin excepción; S11 cerrado. |
 | S12 (V2-T068–V2-T075) | `e96edefd6a0df37f238b7c5b9ff2fbf188eb069d` | `e96edefd6a0df37f238b7c5b9ff2fbf188eb069d` | `4cf41d055eb1df8f23d13178469c4ecf9a777e34` | PASS con dispensa `EX-INTEGRITY-2026-07-11`: sin salida generada/manifest; gate humano inmutable mide `1150` líneas (`008f4eb`=13, `6cc187c`=420, `f322442`=422, `4cf41d0`=295), supera 400; walkthroughs P0 (33 pruebas) y `run-p0-tests.sh` 37/37 en verde; S12 cerrado. |
+| S13A (V2-T076–V2-T080) | `23dbe3efd730a4a89ba98f5e0b9e3bff6f03b437` | `23dbe3efd730a4a89ba98f5e0b9e3bff6f03b437` | `33c024154d579137524e3849c12d12de0b5c5b51` | PASS con dispensa `EX-INTEGRITY-2026-07-11`: sin salida generada; gate humano inmutable mide `673` líneas, supera 400; modelo P1 (`Subject`/`TeachingAssignment`/`ClassSchedule`) y validación transaccional de escuela/contención temporal en un solo work unit `33c0241`. |
+| S13B (V2-T081–V2-T083) | `33c024154d579137524e3849c12d12de0b5c5b51` | `f884d720d48d8f921df57f39b379caeab1f564b5` (solo salida generada) | `95ea7e3e9295111d25806f6e2b17aa79ae25cb57` | PASS con dispensa `EX-INTEGRITY-2026-07-11`: manifest exacto de cuatro rutas (`docs/generated-manifests/s13.txt`, incluido el Designer manual, precedente S07) excluido del conteo; gate humano inmutable mide `814` líneas, supera 400; migración manual `AddP1DatabaseProtections` y extensión de `database/setup.sql`/`SetupSqlParityTestsP1` a 14 tablas en `95ea7e3`. |
+| S13C (V2-T084–V2-T087) | `95ea7e3e9295111d25806f6e2b17aa79ae25cb57` | `95ea7e3e9295111d25806f6e2b17aa79ae25cb57` | `40429aa88d24e4b06a5407d644cba0f4d0981534` | PASS: sin salida generada, `115` líneas humanas, dentro del límite de 400 y sin excepción; `listSubjects` end-to-end en `40429aa`; S13 cerrado. |
 
 ### Secuencia exacta ejecutada
 
@@ -339,6 +342,21 @@ dotnet list package --vulnerable --include-transitive
 - Las unidades documentales `4de4f4e` (docs V2-T072), `6ff0535` (cierre de ledger) y `b16c5cb` no mueven `HUMAN_HEAD`.
 - La cadena de conexión del walkthrough (`TrustServerCertificate=True` contra el certificado autofirmado del contenedor) fue una variable de entorno efímera, nunca configuración versionada; misma política que el fixture Testcontainers.
 - V2-T068–V2-T075: PASS bajo la dispensa `EX-INTEGRITY-2026-07-11`; la puerta P0 habilita V2-T076 (P1).
+
+## Evidencia técnica S13 modelo P1 — 2026-07-12
+
+- Tres sub-gates humanos inmutables:
+  - S13A: `SLICE_BASE=HUMAN_BASE=23dbe3efd730a4a89ba98f5e0b9e3bff6f03b437`, `HUMAN_HEAD=33c024154d579137524e3849c12d12de0b5c5b51`; `git diff --numstat ... | ./scripts/check-human-lines.py` devolvió `673` (estado `1`), registrado bajo `EX-INTEGRITY-2026-07-11`.
+  - S13B: `SLICE_BASE=33c024154d579137524e3849c12d12de0b5c5b51`, `HUMAN_BASE=f884d720d48d8f921df57f39b379caeab1f564b5` (solo salida generada), `HUMAN_HEAD=95ea7e3e9295111d25806f6e2b17aa79ae25cb57`; el conteo excluye las cuatro rutas de `docs/generated-manifests/s13.txt` (incluido el Designer manual, mismo precedente que S07) y midió `814` (estado `1`), registrado bajo `EX-INTEGRITY-2026-07-11`.
+  - S13C: `SLICE_BASE=HUMAN_BASE=95ea7e3e9295111d25806f6e2b17aa79ae25cb57`, `HUMAN_HEAD=40429aa88d24e4b06a5407d644cba0f4d0981534`; `git diff --numstat ... | ./scripts/check-human-lines.py` devolvió `115` (estado `0`), dentro del límite de 400, sin excepción.
+- `docs/generated-manifests/s13.txt`: cuatro rutas exactas — migración generada `AddP1TeachingModel` (Designer + cs) y snapshot en `f884d72`, más el Designer manual de `AddP1DatabaseProtections` que viaja junto al commit humano `95ea7e3` (mismo precedente documentado en S07: el Designer de una migración manual es generado aunque acompañe al commit humano).
+- Fixture: Testcontainers con imagen fijada `mcr.microsoft.com/mssql/server:2022-CU14-ubuntu-22.04`; `ConnectionStrings__InovaitTest` explícitamente ausente del entorno (`env | rg InovaitTest` sin salida).
+- Targeted `Evidence=UT-ASSIGNMENT|Evidence=IT-ASSIGNMENT-PERIOD|Evidence=IT-AUDIT-UTC-P1|Evidence=IT-ROWVERSION-P1|Evidence=IT-SQL-SCRIPT-P1|Evidence=IT-SEED-P1|Evidence=IT-INDEXES-P1|Evidence=IT-LIST-SUBJECTS|Evidence=IT-CATALOG-MUTABILITY-S03`: 26/26 PASS — `UT-ASSIGNMENT` 9/9, `IT-ASSIGNMENT-PERIOD` 6/6, `IT-AUDIT-UTC-P1` 1/1, `IT-ROWVERSION-P1` 1/1, `IT-SQL-SCRIPT-P1` 2/2 (`P1DatabaseProtectionTests`+`SetupSqlParityTestsP1`), `IT-SEED-P1` 1/1, `IT-INDEXES-P1` 3/3, `IT-LIST-SUBJECTS` 2/2, `IT-CATALOG-MUTABILITY-S03` 1/1; `CreateTeachingAssignmentHandlerTests` (sin Evidence ID, filtrado por FQN) 11/11.
+- `scripts/run-p0-tests.sh`: `P0 GATE PASSED: 37/37` con `151 tests` en total (`Priority=P0`, 80 unitarias + 71 integración) contra el mundo de 14 tablas; evidencia P0 intacta tras el refactor P1.
+- Suites Debug y Release completas en `40429aa`: 197/197 en cada configuración (106 unitarias + 91 integración), cero fallos/omitidas.
+- `dotnet restore`: PASS. Builds Debug y Release: PASS, cero warnings y cero errores. `dotnet format --verify-no-changes`: PASS. `dotnet list package --vulnerable --include-transitive`: PASS, cero paquetes vulnerables en cinco proyectos. Árbol de contratos sin diferencias/untracked y checksum `802c13b91bf5c6425d24c540b6841a2abe134e084ea310fc2b7041e32c24a81a`: PASS (tree byte-idéntico desde `8aa8097`). `openspec validate school-enrollment-management --strict`: PASS.
+- OpenSpec strict/show/status y drift de 103 task lines: PASS, 87/103 completas y V2-T088 primera pendiente.
+- V2-T076–V2-T087: PASS. S13A y S13B bajo dispensa `EX-INTEGRITY-2026-07-11`; S13C sin excepción. S13 cerrado; S14/V2-T088 abre.
 
 ## Notas operativas
 
