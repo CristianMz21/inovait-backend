@@ -80,7 +80,7 @@ La salida esperada incluye `401` y `human gate failed: 401 > 400`; el último `t
 | S09 (V2-T052–V2-T057) | `86678088959216952592203345ba016d6356ceba` | `86678088959216952592203345ba016d6356ceba` | `5bb861ec9b228f102c16459038748166f5481f94` | PASS: sin salida generada, 365 líneas humanas, dentro del límite sin excepción; S09 cerrado. |
 | S10 (V2-T058–V2-T061) | `52cbb518f5f47aee8fda12e097cdbfb83f97bfb4` | `52cbb518f5f47aee8fda12e097cdbfb83f97bfb4` | `3212b4ee2f1ec4070fdb1b70d6ee823483fd5b57` | PASS: sin salida generada, 99 líneas humanas, dentro del límite sin excepción; S10 cerrado. |
 | S11 (V2-T062–V2-T067) | `5eb43965448010d6ee86acbed9ff7133738f9e82` | `5eb43965448010d6ee86acbed9ff7133738f9e82` | `21833491b5df294e776ad7439a8a06c5143d08c9` | PASS: sin salida generada, 274 líneas humanas, dentro del límite sin excepción; S11 cerrado. |
-| S12 (V2-T071–V2-T075) | `4cf41d055eb1df8f23d13178469c4ecf9a777e34` | `4cf41d055eb1df8f23d13178469c4ecf9a777e34` | `6ff0535bc80ae07a08a3a4cd61bae3dd47c2e12a` | PASS: S12C fallback aplicado, walkthroughs P0 y puerta `run-p0-tests.sh` en verde; 33 pruebas de walkthrough P0 + 151 pruebas `Priority=P0`, `human gate` = 329.
+| S12 (V2-T068–V2-T075) | `e96edefd6a0df37f238b7c5b9ff2fbf188eb069d` | `e96edefd6a0df37f238b7c5b9ff2fbf188eb069d` | `4cf41d055eb1df8f23d13178469c4ecf9a777e34` | PASS con dispensa `EX-INTEGRITY-2026-07-11`: sin salida generada/manifest; gate humano inmutable mide `1150` líneas (`008f4eb`=13, `6cc187c`=420, `f322442`=422, `4cf41d0`=295), supera 400; walkthroughs P0 (33 pruebas) y `run-p0-tests.sh` 37/37 en verde; S12 cerrado. |
 
 ### Secuencia exacta ejecutada
 
@@ -96,8 +96,8 @@ La salida esperada incluye `401` y `human gate failed: 401 > 400`; el último `t
 10. `feat: add atomic teacher contract workflow` (`247794aa41597f5c6d65934e3215a0f99a5d9352`): work unit S06 de command/puertos/transacción `Serializable` y pruebas de solapamiento/carrera en 5 rutas bajo `src/` y `tests/`; sin salida generada.
 11. `chore: add initial P0 production migration` (`130e642c053e02211268a407ac4dfd2746fc0363`): scaffold inicial, designer y snapshot EF de 11 tablas; tres de las cuatro rutas del manifest S07.
 12. `feat: add P0 database protections and migration evidence` (`a629a712bf7f3b7a7d994c3cec42a4391d28a0e2`): migration manual, designer generado y seis evidencias S07; el gate excluye las cuatro rutas generadas del manifest y cuenta 384 líneas humanas.
-13. `feat: add P0 evidence runner, compose and setup docs` (`4cf41d055eb1df8f23d13178469c4ecf9a777e34`): `scripts/run-p0-tests.sh`, `compose.yaml`, `database/setup.sql`, `README.md`, `quickstart.md` y `docs/evaluator-execution.md`.
-14. `docs: close S12 walkthrough/gate` (`6ff0535bc80ae07a08a3a4cd61bae3dd47c2e12a`): `specs/001-school-enrollment-management/tasks.md`, `openspec/changes/school-enrollment-management/tasks.md`, `openspec/changes/school-enrollment-management/state.yaml`; walkthrough P0 y gate `S12C` en verde.
+13. `test: scope contract identity check to canonical bundle` (`008f4eb`), `feat: add reproducible database setup script` (`6cc187c`), `test: verify setup.sql parity, seeds, and index topology` (`f322442`) y `feat: add P0 evidence runner and local SQL Server compose` (`4cf41d055eb1df8f23d13178469c4ecf9a777e34`): contenido S12 completo — `database/setup.sql`, `SetupSqlParityTests.cs`, `RelationalIndexTests.cs`, `scripts/run-p0-tests.sh` y `compose.yaml`; sin salida generada.
+14. `docs: update S12 local eval and run instructions` (`4de4f4e`), `docs: close S12 walkthrough and gate` (`6ff0535`) y `docs: align S12 human head to current commit` (`b16c5cb`, contabilidad corregida en la unidad documental siguiente): unidades documentales de V2-T072 y cierre de gate; registran evidencia sin mover `HUMAN_HEAD`.
 
 ### Evidencia V2-T010
 
@@ -319,24 +319,26 @@ dotnet list package --vulnerable --include-transitive
 
 ## Evidencia técnica S12 puerta P0 — 2026-07-11
 
-- `SLICE_BASE=HUMAN_BASE=4cf41d055eb1df8f23d13178469c4ecf9a777e34`
-- `HUMAN_HEAD=6ff0535bc80ae07a08a3a4cd61bae3dd47c2e12a`
-- `GENERATED_MANIFEST` no aplica en S12C; S12A/S12B usan fallback por sobrepaso de presupuesto.
-- Entorno real validado:
-  - `docker compose -f compose.yaml up -d --wait` con `MSSQL_SA_PASSWORD` externo.
-  - `database/setup.sql` aplicado dos veces (idempotencia) sobre `master`/`Inovait` en SQL Server 2022.
-  - `ConnectionStrings__InovaitTest="Server=localhost,14333;Database=Inovait;User Id=sa;Password=...;TrustServerCertificate=True"` y ejecución de pruebas de integración contra la misma instancia.
+- `SLICE_BASE=HUMAN_BASE=e96edefd6a0df37f238b7c5b9ff2fbf188eb069d`
+- `HUMAN_HEAD=4cf41d055eb1df8f23d13178469c4ecf9a777e34`
+- `GENERATED_MANIFEST` no aplica; el rango completo S12 mide `1150` líneas humanas (> 400), registrado bajo la dispensa `EX-INTEGRITY-2026-07-11` autorizada por el usuario (integridad y completitud sobre tamaño de slice; sin sub-slices fabricados).
+- Entorno real validado (walkthrough 2026-07-11 21:21 -05):
+  - `docker compose -f compose.yaml up -d --wait` (imagen 2022-CU14, puerto 14333) healthy en ~12 s, con `MSSQL_SA_PASSWORD` generado in-shell y jamás escrito a archivo.
+  - `database/setup.sql` aplicado dos veces sobre `InovaitWalkthrough` (exit 0/0, 11 tablas — idempotencia verificada) y fixtures ficticios vía sqlcmd (ClassGroup, segunda School, Teacher).
+  - API ejecutada desde el dll Release compilado en `4cf41d0` (identidad de binario verificada con probe 404 a una ruta P1 inexistente en ese commit), con `ConnectionStrings__InovaitDatabase` efímera (incluye `TrustServerCertificate=True` solo contra el certificado autofirmado del contenedor; nunca configuración versionada).
 - `scripts/run-p0-tests.sh` (P0):
   - Parsed 37 evidence IDs del manifiesto (`docs/testing-strategy.md`) y 37 IDs validados.
   - `run-p0-tests.sh`: `P0 GATE PASSED: 37/37` con `151 tests` en total (`Priority=P0`).
-- Walkthroughs P0 ejecutados en vivo contra SQL real:
-  - Bloque US1 (inscripción): `CreateEnrollmentTests` + `EnrollmentAtomicityTests` (alta, reutilización, conflicto, atomicidad anual).
-  - Bloque US2 (consultas): `CreateEnrollmentTests` (`IT-ENR-FILTER`).
-  - Bloque US3 (contratos): `TeacherContractEndpointsTests` + `TeacherContractConcurrencyTests`.
-  - Resultado: `33 pruebas de integración P0` ejecutadas en verde.
-- `run-p0-tests.sh` + validaciones base en el estado de runner: `dotnet restore`, build, `dotnet format` y scan de vulnerables en PASS.
-- `git diff --numstat 4cf41d055eb1df8f23d13178469c4ecf9a777e34..6ff0535bc80ae07a08a3a4cd61bae3dd47c2e12a -- | ./scripts/check-human-lines.py` devolvió `329`.
-- V2-T074 y V2-T075: PASS (S12C fallback por diseño, sin excepción `size:exception`).
+- Walkthroughs P0 HTTP reales contra la API viva:
+  - W1 inscripción atómica: `createEnrollment` → `201` (studentReused false, edad 10); repetición idéntica → `409` `application/problem+json` código `enrollment_conflict`; `listEnrollments` → `200` con exactamente 1 fila.
+  - W2 consulta: los cinco catálogos → `200` en orden canónico; filtros acumulativos de class-groups → `200`; contexto válido sin grupos → `200 []`; tiempos calentados informativos 11–24 ms.
+  - W3 contratación multiescuela: `createTeacherContracts` sobre dos escuelas → `201` (2 contratos Confirmed/Effective); listas por docente y escuela → `200`; reintento solapado → `409` `teacher_contract_conflict`; rango inválido → `422` `invalid_date_range`; escuela inexistente → `404` `school_not_found`; JSON malformado → `400` `invalid_request`; leak-scan de todos los cuerpos sin detalles SQL/internos.
+  - Teardown: API detenida, `docker compose down -v` sin contenedores/volúmenes residuales ni archivos espurios en `git status`.
+- Validaciones base en `4cf41d0`: `dotnet restore`, builds Debug/Release (0 warnings), suites completas Debug/Release `161/161` (86 unitarias + 75 integración) sin omitidas, `dotnet format` y scan de vulnerables en PASS.
+- `git diff --numstat e96edefd6a0df37f238b7c5b9ff2fbf188eb069d...4cf41d055eb1df8f23d13178469c4ecf9a777e34 -- | ./scripts/check-human-lines.py` devolvió `1150` (estado `1`), registrado bajo `EX-INTEGRITY-2026-07-11`.
+- Las unidades documentales `4de4f4e` (docs V2-T072), `6ff0535` (cierre de ledger) y `b16c5cb` no mueven `HUMAN_HEAD`.
+- La cadena de conexión del walkthrough (`TrustServerCertificate=True` contra el certificado autofirmado del contenedor) fue una variable de entorno efímera, nunca configuración versionada; misma política que el fixture Testcontainers.
+- V2-T068–V2-T075: PASS bajo la dispensa `EX-INTEGRITY-2026-07-11`; la puerta P0 habilita V2-T076 (P1).
 
 ## Notas operativas
 
