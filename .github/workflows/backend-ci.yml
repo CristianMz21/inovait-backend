@@ -1,0 +1,115 @@
+name: Backend CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  # Restores, builds (0 warnings, TreatWarningsAsErrors), and runs the test
+  # suite. We invoke `scripts/run-p0-tests.sh` / `run-p1-tests.sh` instead of
+  # a bare `dotnet test`: the README documents them as the canonical
+  # acceptance gates ("P0 GATE PASSED: 37/37", "P1 GATE PASSED: 13/13").
+  # They don't just run tests -- they cross-check that every evidence ID in
+  # the docs/testing-strategy.md manifest is still covered by at least one
+  # test before running the full P0/P1 suites, which a plain `dotnet test`
+  # would not catch (a silently deleted `[Fact]` would go unnoticed). Each
+  # script does its own `dotnet build` internally (no --no-build), so the
+  # explicit build step below is a fast fail-fast signal, not a strict
+  # prerequisite.
+  build-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - run: dotnet restore
+
+      - run: dotnet build --no-restore -c Debug
+
+      # Testcontainers (tests/Inovait.IntegrationTests/Infrastructure/SqlServerFixture.cs)
+      # pulls and starts mcr.microsoft.com/mssql/server:2022-CU14-ubuntu-22.04
+      # for the integration suite. ubuntu-latest ships Docker Engine
+      # pre-installed and running, so no extra setup step is needed here.
+      - name: P0 gate
+        run: ./scripts/run-p0-tests.sh
+
+      - name: P1 gate
+        run: ./scripts/run-p1-tests.sh
+
+  # End-to-end smoke test of the full local stack (SQL Server 2022 -> schema
+  # -> demo seed -> API), using the repo's own scripts/deploy-local.sh --
+  # no reimplementation of its docker-compose/sqlcmd steps here.
+  integration-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      # `--skip-frontend` was verified by reading scripts/deploy-local.sh:
+      # `check_prereqs()` only requires node/npm and only checks that port
+      # 4200 is free when `SKIP_FRONTEND -eq 0` (lines gated by
+      # `if [[ "$SKIP_FRONTEND" -eq 0 ]]`). With `--skip-frontend` set,
+      # neither check runs, so this job needs no Node.js setup and no
+      # inovait-frontend checkout. No workaround/patch to the script was
+      # necessary.
+      #
+      # The SA password is generated here (openssl rand, never echoed) and
+      # passed via `--sa-password` instead of letting the script generate
+      # its own: deploy-local.sh only prints the password in its final
+      # success banner when it generated it itself
+      # (`SA_PASSWORD_GENERATED=1`); supplying it ourselves keeps that
+      # banner branch untaken so the password never reaches the (public,
+      # world-readable) job log. `::add-mask::` is registered as a
+      # defense-in-depth backstop in case anything else in the stack were
+      # to print it.
+      - name: Start local stack (SQL Server + schema + demo seed + API)
+        run: |
+          set -euo pipefail
+          SA_PASSWORD="$(openssl rand -base64 32)Aa1!"
+          echo "::add-mask::$SA_PASSWORD"
+          ./scripts/deploy-local.sh --skip-frontend --sa-password "$SA_PASSWORD"
+
+      - name: Smoke test API endpoints
+        run: |
+          set -euo pipefail
+          BASE_URL="http://localhost:5000"
+
+          echo "Checking GET /health/ready..."
+          curl -fsS "$BASE_URL/health/ready" | jq -e '.status == "ready"' >/dev/null
+          echo "OK: /health/ready -> ready"
+
+          echo "Checking GET /api/schools (expect 200 + non-empty array)..."
+          curl -fsS "$BASE_URL/api/schools" | jq -e 'type == "array" and length > 0' >/dev/null
+          echo "OK: /api/schools -> non-empty array"
+
+          # AcademicYearSummary.isCurrent (specs/001-school-enrollment-management/contracts/components/catalogs.yaml)
+          # marks the current academic year; discover its id dynamically
+          # rather than hardcoding one.
+          echo "Discovering current academic year via GET /api/academic-years..."
+          academic_year_id="$(curl -fsS "$BASE_URL/api/academic-years" \
+            | jq -e '[.[] | select(.isCurrent == true)] | if length > 0 then .[0].id else error("no current academic year") end')"
+          echo "OK: current academicYearId=${academic_year_id}"
+
+          echo "Checking GET /api/reports/age-distribution?academicYearId=${academic_year_id} (expect 200)..."
+          http_code="$(curl -sS -o /dev/null -w '%{http_code}' "$BASE_URL/api/reports/age-distribution?academicYearId=${academic_year_id}")"
+          if [[ "$http_code" != "200" ]]; then
+            echo "ERROR: /api/reports/age-distribution returned HTTP ${http_code}, expected 200." >&2
+            exit 1
+          fi
+          echo "OK: /api/reports/age-distribution -> HTTP 200"
+
+      - name: Tear down local stack
+        if: always()
+        run: ./scripts/deploy-local.sh --down
