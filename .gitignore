@@ -45,3 +45,6 @@ Thumbs.db
 
 # Agent tooling (derived caches; the registry .md itself is tracked)
 .atl/.skill-registry.cache.json
+
+# Local full-stack deployment state (PID files, logs) from scripts/deploy-local.*
+.local-stack/
