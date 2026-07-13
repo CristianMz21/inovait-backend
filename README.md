@@ -121,6 +121,20 @@ dotnet test  --no-build --no-restore -c Debug
 
 Las pruebas de integración usan Testcontainers (SQL Server 2022 CU14 real, imagen fijada); no requieren configuración. Sin Docker, puede apuntarse un SQL Server externo con la variable `ConnectionStrings__InovaitTest` (fallback documentado solo para tests).
 
+### Análisis local con SonarQube
+
+Con una instancia local disponible en `http://localhost:9000`, exportar un token y ejecutar:
+
+```bash
+read -rsp 'Sonar token: ' SONAR_TOKEN
+export SONAR_TOKEN
+printf '\n'
+./scripts/run-sonar-local.sh
+unset SONAR_TOKEN
+```
+
+El script restaura `dotnet-sonarscanner` desde el manifest local, compila la solución sin caché incremental, ejecuta las pruebas unitarias y de integración, genera cobertura OpenCover y publica el análisis con la clave `inovait-backend`. Las migraciones se mantienen bajo análisis de reglas y cobertura, pero se excluyen del cálculo de duplicación para que el scaffolding de EF no distorsione esa métrica. `SONAR_HOST_URL`, `SONAR_PROJECT_KEY`, `SONAR_PROJECT_NAME` y `CONFIGURATION` se pueden sobrescribir mediante variables de entorno. El token se lee desde `SONAR_TOKEN`, se elimina del entorno antes de compilar y nunca se escribe en el repositorio. SonarScanner for .NET requiere enviarlo a sus procesos `begin`/`end`; usar un token local de corta duración y revocarlo después del análisis.
+
 ## Estructura del proyecto
 
 | Ruta | Contenido |

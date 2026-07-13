@@ -32,6 +32,9 @@ coverage.json
 coveragehtml/
 *.trx
 
+# SonarQube local analysis
+.sonarqube/
+
 # OS
 .DS_Store
 Thumbs.db

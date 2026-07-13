@@ -56,8 +56,11 @@ public static class TeachingAssignmentPeriodPolicy
         return startDate >= lowerBound && effectiveEnd <= upperBound;
     }
 
-    private static DateOnly Min(DateOnly first, DateOnly second, DateOnly third) =>
-        first < second ? (first < third ? first : third) : (second < third ? second : third);
+    private static DateOnly Min(DateOnly first, DateOnly second, DateOnly third)
+    {
+        var firstPairMinimum = first < second ? first : second;
+        return firstPairMinimum < third ? firstPairMinimum : third;
+    }
 }
 
 public interface ITeachingAssignmentRepository

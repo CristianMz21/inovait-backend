@@ -165,7 +165,7 @@ public sealed class AuditConcurrencyTests(SqlServerFixture fixture)
         return services.BuildServiceProvider(validateScopes: true);
     }
 
-    private ServiceProvider CreateMigrationProvider(string connectionString)
+    private static ServiceProvider CreateMigrationProvider(string connectionString)
     {
         var services = new ServiceCollection();
         services.AddSingleton<TimeProvider>(new FixedTimeProvider(UpdateTimestamp));

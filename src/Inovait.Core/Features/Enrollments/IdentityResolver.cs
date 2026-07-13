@@ -33,7 +33,8 @@ public sealed class IdentityResolver(
         var lastNames = normalizer.NormalizeRequired(request.LastNames);
         if (request.BirthDate > DateOnly.FromDateTime(timeProvider.GetUtcNow().UtcDateTime))
         {
-            throw new ArgumentOutOfRangeException(nameof(request.BirthDate), "Birth date cannot be in the future.");
+            throw new ArgumentOutOfRangeException(
+                nameof(request), $"Birth date '{request.BirthDate}' cannot be in the future.");
         }
 
         var documentTypeId = await reader.FindDocumentTypeIdAsync(code, cancellationToken)

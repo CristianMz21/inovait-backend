@@ -12,7 +12,7 @@ namespace Inovait.IntegrationTests.Persistence;
 
 [Collection(SqlServerCollection.Name)]
 [Trait("Priority", "P0")]
-public sealed class P0DatabaseProtectionTests(SqlServerFixture fixture) : IAsyncLifetime
+public sealed partial class P0DatabaseProtectionTests(SqlServerFixture fixture) : IAsyncLifetime
 {
     private InovaitDbContext _context = null!;
     [Fact]
@@ -149,7 +149,7 @@ public sealed class P0DatabaseProtectionTests(SqlServerFixture fixture) : IAsync
         .ToArrayAsync(TestContext.Current.CancellationToken);
     private async Task ExecuteScriptAsync(string script)
     {
-        foreach (var batch in Regex.Split(script, @"^\s*GO\s*$", RegexOptions.Multiline | RegexOptions.IgnoreCase))
+        foreach (var batch in SqlBatchSeparatorRegex().Split(script))
         {
             if (!string.IsNullOrWhiteSpace(batch))
                 await _context.Database.ExecuteSqlRawAsync(batch, TestContext.Current.CancellationToken);
@@ -175,6 +175,8 @@ public sealed class P0DatabaseProtectionTests(SqlServerFixture fixture) : IAsync
         .SingleAsync(TestContext.Current.CancellationToken);
     private static PropertySaveBehavior AfterSave<TEntity>(IModel model, string propertyName) where TEntity : class =>
         model.FindEntityType(typeof(TEntity))!.FindProperty(propertyName)!.GetAfterSaveBehavior();
+    [GeneratedRegex(@"^\s*GO\s*$", RegexOptions.Multiline | RegexOptions.IgnoreCase)]
+    private static partial Regex SqlBatchSeparatorRegex();
     private static readonly string[] ExpectedMigrations =
         ["20260711161500_InitialP0ProductionModel", "20260711161518_AddP0DatabaseProtections"];
     private static readonly string[] ExpectedTables = ["academic.ClassGroup", "academic.Enrollment", "catalog.AcademicConfiguration", "catalog.AcademicYear",

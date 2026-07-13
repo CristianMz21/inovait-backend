@@ -21,37 +21,8 @@ public static class CatalogEndpoints
             Results.Ok(await reads.ListAcademicYearsAsync(cancellationToken)))
             .WithName("listAcademicYears");
 
-        group.MapGet("/class-groups", async (
-            int? schoolId, int? gradeId, int? academicYearId,
-            CatalogReadService reads, ReferenceLookupService lookups, CancellationToken cancellationToken) =>
-        {
-            var validator = new RequestValidator()
-                .Require("schoolId", schoolId is null or >= 1, "Debe ser mayor o igual a 1.")
-                .Require("gradeId", gradeId is null or >= 1, "Debe ser mayor o igual a 1.")
-                .Require("academicYearId", academicYearId is null or >= 1, "Debe ser mayor o igual a 1.");
-            if (validator.HasErrors)
-            {
-                return validator.ToProblem();
-            }
-
-            if (schoolId is int schoolIdValue && !await lookups.SchoolExistsAsync(schoolIdValue, cancellationToken))
-            {
-                return CatalogProblems.SchoolNotFound();
-            }
-
-            if (gradeId is int gradeIdValue && !await lookups.GradeExistsAsync(gradeIdValue, cancellationToken))
-            {
-                return CatalogProblems.GradeNotFound();
-            }
-
-            if (academicYearId is int academicYearIdValue &&
-                !await lookups.AcademicYearExistsAsync(academicYearIdValue, cancellationToken))
-            {
-                return CatalogProblems.AcademicYearNotFound();
-            }
-
-            return Results.Ok(await reads.ListClassGroupsAsync(schoolId, gradeId, academicYearId, cancellationToken));
-        }).WithName("listClassGroups");
+        group.MapGet("/class-groups", ListClassGroupsAsync)
+            .WithName("listClassGroups");
 
         group.MapGet("/teachers", async (CatalogReadService reads, CancellationToken cancellationToken) =>
             Results.Ok(await reads.ListTeachersAsync(cancellationToken)))
@@ -61,25 +32,74 @@ public static class CatalogEndpoints
             Results.Ok(await reads.ListSubjectsAsync(cancellationToken)))
             .WithName("listSubjects");
 
-        group.MapGet("/schools/{schoolId}/teachers", async (
-            int schoolId, DateOnly? asOfDate, TeacherContractReadService reads, ReferenceLookupService lookups,
-            TimeProvider timeProvider, CancellationToken cancellationToken) =>
-        {
-            var validator = new RequestValidator().Require("schoolId", schoolId >= 1, "Debe ser mayor o igual a 1.");
-            if (validator.HasErrors)
-            {
-                return validator.ToProblem();
-            }
-
-            if (!await lookups.SchoolExistsAsync(schoolId, cancellationToken))
-            {
-                return CatalogProblems.SchoolNotFound();
-            }
-
-            var evaluatedAt = asOfDate ?? DateOnly.FromDateTime(timeProvider.GetUtcNow().UtcDateTime);
-            return Results.Ok(await reads.ListBySchoolAsync(schoolId, evaluatedAt, cancellationToken));
-        }).WithName("listTeachersBySchool");
+        group.MapGet("/schools/{schoolId}/teachers", ListTeachersBySchoolAsync)
+            .WithName("listTeachersBySchool");
 
         return app;
     }
+
+    private static async Task<IResult> ListClassGroupsAsync(
+        [AsParameters] ClassGroupQuery query,
+        CatalogReadService reads,
+        ReferenceLookupService lookups,
+        CancellationToken cancellationToken)
+    {
+        var validator = new RequestValidator()
+            .RequireOptionalPositiveId("schoolId", query.SchoolId)
+            .RequireOptionalPositiveId("gradeId", query.GradeId)
+            .RequireOptionalPositiveId("academicYearId", query.AcademicYearId);
+        if (validator.HasErrors)
+        {
+            return validator.ToProblem();
+        }
+
+        if (query.SchoolId is int schoolId && !await lookups.SchoolExistsAsync(schoolId, cancellationToken))
+        {
+            return CatalogProblems.SchoolNotFound();
+        }
+
+        if (query.GradeId is int gradeId && !await lookups.GradeExistsAsync(gradeId, cancellationToken))
+        {
+            return CatalogProblems.GradeNotFound();
+        }
+
+        if (query.AcademicYearId is int academicYearId &&
+            !await lookups.AcademicYearExistsAsync(academicYearId, cancellationToken))
+        {
+            return CatalogProblems.AcademicYearNotFound();
+        }
+
+        return Results.Ok(await reads.ListClassGroupsAsync(
+            query.SchoolId, query.GradeId, query.AcademicYearId, cancellationToken));
+    }
+
+    private static async Task<IResult> ListTeachersBySchoolAsync(
+        int schoolId,
+        DateOnly? asOfDate,
+        TeacherContractReadService reads,
+        ReferenceLookupService lookups,
+        TimeProvider timeProvider,
+        CancellationToken cancellationToken)
+    {
+        var validator = new RequestValidator().RequirePositiveId("schoolId", schoolId);
+        if (validator.HasErrors)
+        {
+            return validator.ToProblem();
+        }
+
+        if (!await lookups.SchoolExistsAsync(schoolId, cancellationToken))
+        {
+            return CatalogProblems.SchoolNotFound();
+        }
+
+        var evaluatedAt = asOfDate ?? DateOnly.FromDateTime(timeProvider.GetUtcNow().UtcDateTime);
+        return Results.Ok(await reads.ListBySchoolAsync(schoolId, evaluatedAt, cancellationToken));
+    }
+}
+
+internal sealed class ClassGroupQuery
+{
+    public int? SchoolId { get; init; }
+    public int? GradeId { get; init; }
+    public int? AcademicYearId { get; init; }
 }

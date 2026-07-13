@@ -10,14 +10,21 @@ namespace Inovait.Infrastructure.Features.Enrollments;
 
 public sealed class EfEnrollmentWorkflow(InovaitDbContext context) : IEnrollmentRepository, IEnrollmentTransaction
 {
-    private Func<int, CancellationToken, ValueTask<bool>> _beforeAttempt =
+    private const int DeadlockVictimErrorNumber = 1205;
+    private const int UniqueIndexErrorNumber = 2601;
+    private const int UniqueConstraintErrorNumber = 2627;
+
+    private readonly Func<int, CancellationToken, ValueTask<bool>> _forceRetryBeforeAttempt =
         static (_, _) => ValueTask.FromResult(false);
-    private Action<int, CancellationToken> _attemptObserved = static (_, _) => { };
+    private readonly Action<int> _retryObserved = static _ => { };
+    private readonly Action<CancellationToken> _rollbackObserved = static _ => { };
 
     internal EfEnrollmentWorkflow(InovaitDbContext context,
-        Func<int, CancellationToken, ValueTask<bool>> beforeAttempt,
-        Action<int, CancellationToken> attemptObserved) : this(context) =>
-        (_beforeAttempt, _attemptObserved) = (beforeAttempt, attemptObserved);
+        Func<int, CancellationToken, ValueTask<bool>> forceRetryBeforeAttempt,
+        Action<int> retryObserved,
+        Action<CancellationToken> rollbackObserved) : this(context) =>
+        (_forceRetryBeforeAttempt, _retryObserved, _rollbackObserved) =
+        (forceRetryBeforeAttempt, retryObserved, rollbackObserved);
     public async ValueTask<short?> FindDocumentTypeIdAsync(string code, CancellationToken cancellationToken) =>
         await context.DocumentTypes.AsNoTracking().Where(type => type.Code == code)
             .Select(type => (short?)type.Id).SingleOrDefaultAsync(cancellationToken);
@@ -79,8 +86,12 @@ public sealed class EfEnrollmentWorkflow(InovaitDbContext context) : IEnrollment
                 await context.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
             try
             {
-                if (await _beforeAttempt(attempt, cancellationToken))
-                    throw new InjectedRaceException();
+                if (await _forceRetryBeforeAttempt(attempt, cancellationToken))
+                {
+                    await RollbackAsync(databaseTransaction);
+                    _retryObserved(attempt);
+                    continue;
+                }
                 var result = await operation(cancellationToken);
                 if (result.IsSuccess)
                     await databaseTransaction.CommitAsync(cancellationToken);
@@ -91,9 +102,7 @@ public sealed class EfEnrollmentWorkflow(InovaitDbContext context) : IEnrollment
             catch (Exception exception) when (IsRace(exception))
             {
                 await RollbackAsync(databaseTransaction);
-                _attemptObserved(attempt, CancellationToken.None);
-                if (attempt == attempts)
-                    return EnrollmentResult.Failure(EnrollmentError.ConcurrencyConflict);
+                _retryObserved(attempt);
             }
             catch
             {
@@ -110,15 +119,17 @@ public sealed class EfEnrollmentWorkflow(InovaitDbContext context) : IEnrollment
     private async Task RollbackAsync(IDbContextTransaction transaction)
     {
         var cancellationToken = CancellationToken.None;
-        _attemptObserved(0, cancellationToken);
+        _rollbackObserved(cancellationToken);
         await transaction.RollbackAsync(cancellationToken);
     }
     private static bool IsRace(Exception exception)
     {
         for (Exception? current = exception; current is not null; current = current.InnerException)
-            if (current is InjectedRaceException or SqlException { Number: 1205 or 2601 or 2627 })
+            if (current is SqlException
+                {
+                    Number: DeadlockVictimErrorNumber or UniqueIndexErrorNumber or UniqueConstraintErrorNumber,
+                })
                 return true;
         return false;
     }
-    private sealed class InjectedRaceException : Exception { }
 }

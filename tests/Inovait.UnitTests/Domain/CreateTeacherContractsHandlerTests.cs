@@ -18,8 +18,7 @@ public sealed class CreateTeacherContractsHandlerTests
         Assert.Equal([1, 2], workflow.CreatedSchools);
     }
 
-    public static IEnumerable<object[]> Errors =>
-        Enum.GetValues<TeacherContractError>().Select(error => new object[] { error });
+    public static TheoryData<TeacherContractError> Errors => [.. Enum.GetValues<TeacherContractError>()];
 
     [Theory]
     [MemberData(nameof(Errors))]

@@ -27,10 +27,10 @@ internal static class RequestValidation
         }
 
         validator
-            .Require("schoolId", request.SchoolId >= 1, "Debe ser mayor o igual a 1.")
-            .Require("academicYearId", request.AcademicYearId >= 1, "Debe ser mayor o igual a 1.")
-            .Require("gradeId", request.GradeId >= 1, "Debe ser mayor o igual a 1.")
-            .Require("classGroupId", request.ClassGroupId >= 1, "Debe ser mayor o igual a 1.");
+            .RequirePositiveId("schoolId", request.SchoolId)
+            .RequirePositiveId("academicYearId", request.AcademicYearId)
+            .RequirePositiveId("gradeId", request.GradeId)
+            .RequirePositiveId("classGroupId", request.ClassGroupId);
 
         return validator.HasErrors ? validator.ToProblem() : null;
     }

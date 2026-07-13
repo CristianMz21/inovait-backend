@@ -11,8 +11,8 @@ namespace Inovait.Infrastructure.Features.TeacherContracts;
 public sealed class EfTeacherContractWorkflow(InovaitDbContext context)
     : ITeacherContractRepository, ITeacherContractTransaction
 {
-    private Func<int, CancellationToken, ValueTask> _afterOverlapRead = static (_, _) => ValueTask.CompletedTask;
-    private Action<int, CancellationToken> _attemptObserved = static (_, _) => { };
+    private readonly Func<int, CancellationToken, ValueTask> _afterOverlapRead = static (_, _) => ValueTask.CompletedTask;
+    private readonly Action<int, CancellationToken> _attemptObserved = static (_, _) => { };
     private int _attempt;
 
     internal EfTeacherContractWorkflow(InovaitDbContext context,

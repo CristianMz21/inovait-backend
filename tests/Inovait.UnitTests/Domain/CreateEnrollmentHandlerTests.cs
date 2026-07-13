@@ -20,8 +20,7 @@ public sealed class CreateEnrollmentHandlerTests
         Assert.Equal((11, 7, reused), (result.EnrollmentId, result.StudentId, result.StudentReused));
         Assert.Equal(createsRole, workflow.CreatedStudentRole);
     }
-    public static IEnumerable<object[]> Errors =>
-        Enum.GetValues<EnrollmentError>().Select(error => new object[] { error });
+    public static TheoryData<EnrollmentError> Errors => [.. Enum.GetValues<EnrollmentError>()];
     [Theory]
     [MemberData(nameof(Errors))]
     public async Task HandleAsync_MapsEveryCanonicalFailureWithoutWriting(EnrollmentError expected)

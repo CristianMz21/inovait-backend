@@ -21,6 +21,20 @@ internal sealed class RequestValidator
         return this;
     }
 
+    public RequestValidator RequireOptionalPositiveId(string field, int? value)
+    {
+        if (value is int id)
+        {
+            Require(field, id >= 1, "Debe ser mayor o igual a 1.");
+        }
+
+        return this;
+    }
+
+    public RequestValidator RequirePositiveId(string field, int? value) =>
+        Require(field, value is not null, "El campo es obligatorio.")
+            .RequireOptionalPositiveId(field, value);
+
     public IResult ToProblem() => ProblemFactory.Create(
         StatusCodes.Status400BadRequest,
         "invalid-request",

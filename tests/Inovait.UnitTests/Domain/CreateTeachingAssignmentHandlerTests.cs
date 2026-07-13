@@ -18,8 +18,7 @@ public sealed class CreateTeachingAssignmentHandlerTests
         Assert.Equal([1, 3], workflow.CreatedWeekdays);
     }
 
-    public static IEnumerable<object[]> Errors =>
-        Enum.GetValues<TeachingAssignmentError>().Select(error => new object[] { error });
+    public static TheoryData<TeachingAssignmentError> Errors => [.. Enum.GetValues<TeachingAssignmentError>()];
 
     [Theory]
     [MemberData(nameof(Errors))]

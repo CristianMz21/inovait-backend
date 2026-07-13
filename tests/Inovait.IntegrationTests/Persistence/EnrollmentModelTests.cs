@@ -49,7 +49,7 @@ public sealed class EnrollmentModelTests(SqlServerFixture fixture) : IAsyncLifet
         using var source = new CancellationTokenSource();
         var probe = new RetryProbe(1, false);
         var transaction = new EfEnrollmentWorkflow(
-            _context, probe.BeforeAttemptAsync, probe.RecordAttempt);
+            _context, probe.ShouldForceRetryBeforeAttemptAsync, probe.RecordRetry, probe.RecordRollback);
         IEnrollmentRepository repository = transaction;
         var personSaved = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         async ValueTask<EnrollmentResult> CancelAfterPerson(CancellationToken cancellationToken)
@@ -95,6 +95,34 @@ public sealed class EnrollmentModelTests(SqlServerFixture fixture) : IAsyncLifet
             .HandleAsync(Command(1, 1), TestContext.Current.CancellationToken);
         Assert.Equal(EnrollmentError.ConcurrencyConflict, exhausted.Error);
         Assert.Equal(3, exhaustionProbe.Retries);
+        Assert.Empty(_context.ChangeTracker.Entries());
+    }
+    [Fact]
+    public async Task EnrollmentTransaction_RealUniqueConflictExhaustsThreeRetries()
+    {
+        const string documentNumber = "RETRY-SQL";
+        _context.People.Add(new Person(1, documentNumber, "Existing", "Person", new(2012, 1, 1)));
+        await _context.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var retries = 0;
+        var transaction = new EfEnrollmentWorkflow(
+            _context,
+            static (_, _) => ValueTask.FromResult(false),
+            _ => retries++,
+            static _ => { });
+
+        async ValueTask<EnrollmentResult> CreateDuplicatePerson(CancellationToken cancellationToken)
+        {
+            _context.People.Add(new Person(1, documentNumber, "Duplicate", "Person", new(2012, 1, 1)));
+            await _context.SaveChangesAsync(cancellationToken);
+            return EnrollmentResult.Failure(EnrollmentError.ConcurrencyConflict);
+        }
+
+        var result = await transaction.ExecuteAsync(
+            CreateDuplicatePerson, TestContext.Current.CancellationToken);
+
+        Assert.Equal(EnrollmentError.ConcurrencyConflict, result.Error);
+        Assert.Equal(3, retries);
         Assert.Empty(_context.ChangeTracker.Entries());
     }
     [Fact]
@@ -259,7 +287,7 @@ public sealed class EnrollmentModelTests(SqlServerFixture fixture) : IAsyncLifet
     private static CreateEnrollmentHandler CreateHandler(InovaitDbContext context, RetryProbe probe)
     {
         var workflow = new EfEnrollmentWorkflow(
-            context, probe.BeforeAttemptAsync, probe.RecordAttempt);
+            context, probe.ShouldForceRetryBeforeAttemptAsync, probe.RecordRetry, probe.RecordRollback);
         return new(new(new TextNormalizer(), workflow, TimeProvider.System), workflow, workflow);
     }
 
@@ -269,7 +297,8 @@ public sealed class EnrollmentModelTests(SqlServerFixture fixture) : IAsyncLifet
         private int _arrivals;
         public int Retries;
         public CancellationToken? RollbackToken;
-        public async ValueTask<bool> BeforeAttemptAsync(int attempt, CancellationToken cancellationToken)
+        public async ValueTask<bool> ShouldForceRetryBeforeAttemptAsync(
+            int attempt, CancellationToken cancellationToken)
         {
             if (fail || attempt != 1)
                 return fail;
@@ -278,7 +307,8 @@ public sealed class EnrollmentModelTests(SqlServerFixture fixture) : IAsyncLifet
             await _release.Task.WaitAsync(cancellationToken);
             return false;
         }
-        public void RecordAttempt(int attempt, CancellationToken token) { if (attempt == 0) RollbackToken = token; else Interlocked.Increment(ref Retries); }
+        public void RecordRetry(int _) => Interlocked.Increment(ref Retries);
+        public void RecordRollback(CancellationToken token) => RollbackToken = token;
     }
 
     private IReadOnlyIndex AssertIndex<TEntity>(string name, string[] keys, string[] includes) where TEntity : class
